@@ -6,6 +6,7 @@ import 'package:flutter_application_1/screens/teams/teams.screen.dart';
 import 'home_content.dart';
 import '../profile/profile_screen.dart'; 
 //import '../events/create_event_screen.dart'; 
+import '../events/my_events_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // Para os ícones da barra de navegação
 //import 'dart:ui'; // Para o efeito de blur
 
@@ -22,8 +23,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
   static const List<Widget> _widgetOptions = <Widget>[
     HomeContent(),
     TeamsScreen(),
-    // Placeholder para "Meus Eventos", pode criar uma tela depois
-    Center(child: Text("Tela de Meus Eventos")), 
+    MyEventsScreen(),
     ProfileScreen(),
   ];
 
