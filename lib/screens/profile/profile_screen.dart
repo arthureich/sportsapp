@@ -1,9 +1,42 @@
 // lib/screens/profile/profile_screen.dart
 
 import 'package:flutter/material.dart';
+import '../auth/login_screen.dart';
+
+enum ProfileMenuOption { editProfile, settings, faq, logout }
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  void _onMenuOptionSelected(BuildContext context, ProfileMenuOption option) {
+    switch (option) {
+      case ProfileMenuOption.editProfile:
+        // Lógica para navegar para a tela de edição de perfil
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Navegando para Editar Perfil...')),
+        );
+        break;
+      case ProfileMenuOption.settings:
+        // Lógica para navegar para configurações
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Navegando para Configurações...')),
+        );
+        break;
+      case ProfileMenuOption.faq:
+        // Lógica para navegar para a tela de FAQ
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Navegando para FAQ...')),
+        );
+        break;
+      case ProfileMenuOption.logout:
+        // AÇÃO DE LOGOUT: Remove todas as telas e volta para o Login
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (Route<dynamic> route) => false, // Esta condição remove todas as rotas anteriores
+        );
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,12 +47,41 @@ class ProfileScreen extends StatelessWidget {
           title: const Text('Meu Perfil'),
           centerTitle: true,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () {
-                // Navegar para configurações
-              },
-            ),
+            PopupMenuButton<ProfileMenuOption>(
+              onSelected: (option) => _onMenuOptionSelected(context, option),
+              icon: const Icon(Icons.more_vert), // Ícone de três pontinhos
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<ProfileMenuOption>>[
+                const PopupMenuItem<ProfileMenuOption>(
+                  value: ProfileMenuOption.editProfile,
+                  child: ListTile(
+                    leading: Icon(Icons.edit_outlined),
+                    title: Text('Editar Perfil'),
+                  ),
+                ),
+                const PopupMenuItem<ProfileMenuOption>(
+                  value: ProfileMenuOption.settings,
+                  child: ListTile(
+                    leading: Icon(Icons.settings_outlined),
+                    title: Text('Configurações'),
+                  ),
+                ),
+                const PopupMenuItem<ProfileMenuOption>(
+                  value: ProfileMenuOption.faq,
+                  child: ListTile(
+                    leading: Icon(Icons.quiz_outlined),
+                    title: Text('FAQ'),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<ProfileMenuOption>(
+                  value: ProfileMenuOption.logout,
+                  child: ListTile(
+                    leading: Icon(Icons.logout, color: Colors.red),
+                    title: Text('Sair', style: TextStyle(color: Colors.red)),
+                  ),
+                ),
+              ],
+            )
           ],
         ),
         body: NestedScrollView(
