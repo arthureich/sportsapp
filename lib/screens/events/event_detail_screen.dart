@@ -1,7 +1,7 @@
 // lib/screens/event/event_detail_screen.dart
 
 import 'package:flutter/material.dart';
-import '../../models/event_model.dart'; // Importa nosso modelo
+import '../../models/event_model.dart'; 
 
 class EventDetailScreen extends StatelessWidget {
   // Recebe um objeto Event no construtor
@@ -96,19 +96,20 @@ class EventDetailScreen extends StatelessWidget {
   }
   
   Widget _buildOrganizerInfo(LocalUser organizer) {
-      return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.0),
+      return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d'),
+            backgroundImage: NetworkImage(organizer.avatarUrl),
+            //backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d'),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Organizado por", style: TextStyle(color: Colors.grey)),
-              Text("Carlos Silva", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text("Organizado por", style: TextStyle(color: Colors.grey)),
+              Text(organizer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           )
         ],
