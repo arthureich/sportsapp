@@ -1,6 +1,7 @@
 // lib/screens/teams/teams_screen.dart
 
 import 'package:flutter/material.dart';
+import 'create_team_screen.dart';
 //import 'package:flutter_svg/flutter_svg.dart';
 
 // Modelo simples para os dados da equipe (pode ser movido para a pasta models)
@@ -98,7 +99,12 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.add, color: Colors.white),
                 label: const Text('Criar Nova Equipe', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CreateTeamScreen()),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
