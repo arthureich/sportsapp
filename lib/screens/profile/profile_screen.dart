@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../auth/login_screen.dart';
+import 'settings_screen.dart';
 
 enum ProfileMenuOption { editProfile, settings, faq, logout }
 
@@ -17,9 +18,9 @@ class ProfileScreen extends StatelessWidget {
         );
         break;
       case ProfileMenuOption.settings:
-        // Lógica para navegar para configurações
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navegando para Configurações...')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SettingsScreen()),
         );
         break;
       case ProfileMenuOption.faq:
