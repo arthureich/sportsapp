@@ -1,6 +1,4 @@
-// lib/models/event_model.dart
 
-// Modelo para um usuário simplificado
 class LocalUser {
   final String id;
   final String name;

@@ -8,7 +8,6 @@ import '../../api/event_service.dart';
 import '../../models/event_model.dart';
 import '../events/event_detail_screen.dart';
 
-// Este widget contém APENAS o conteúdo visual da sua antiga home
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
 
@@ -34,9 +33,6 @@ class _HomeContentState extends State<HomeContent> {
       ],
     );
   }
-
-  // Cole aqui os métodos que estavam na sua home_screen.dart:
-  // _buildTopFilterBars(), _buildSportFilterChip(), _buildSlidingPanel(), _buildEventListItem()
 
   Widget _buildTopFilterBars() {
     return Positioned(
@@ -221,7 +217,6 @@ class _HomeContentState extends State<HomeContent> {
                 width: 70,
                 height: 70,
                 fit: BoxFit.cover,
-                // Adiciona um tratamento de erro simples para a imagem
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
                     width: 70,

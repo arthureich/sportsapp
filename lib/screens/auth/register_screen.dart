@@ -57,7 +57,6 @@ class RegisterScreen extends StatelessWidget {
               ElevatedButton(
                 style: _buildButtonStyle(),
                 onPressed: () {
-                  // Lógica de registro...
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Cadastro realizado! Faça o login.')),
                   );
@@ -87,7 +86,6 @@ class RegisterScreen extends StatelessWidget {
     );
   }
 
-  // Reutilizando os mesmos widgets de estilo
   InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
     return InputDecoration(
       labelText: label,

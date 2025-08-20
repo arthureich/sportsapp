@@ -8,7 +8,6 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Usamos um gradiente para um fundo mais interessante
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -130,7 +129,6 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  // Métodos auxiliares para manter o código limpo
   InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
     return InputDecoration(
       labelText: label,
@@ -163,8 +161,8 @@ class LoginScreen extends StatelessWidget {
   }
 
   Widget _buildSocialButton({required String iconPath, required VoidCallback onTap}) {
-    // Para que isso funcione, adicione ícones do Google e Apple na pasta assets/icons/
-    // e importe o 'package:flutter_svg/flutter_svg.dart';
+    // Adicionar ícones do Google e Apple na pasta assets/icons/
+    // Importar o 'package:flutter_svg/flutter_svg.dart';
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -174,7 +172,6 @@ class LoginScreen extends StatelessWidget {
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(16),
         ),
-        // child: SvgPicture.asset(iconPath, height: 24, width: 24),
         child: Icon(Icons.g_mobiledata, size: 28), // Placeholder caso não tenha o SVG
       ),
     );

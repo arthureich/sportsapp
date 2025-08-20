@@ -1,5 +1,3 @@
-// lib/screens/event/event_detail_screen.dart
-
 import 'package:flutter/material.dart';
 import '../../models/event_model.dart'; 
 
@@ -102,7 +100,6 @@ class EventDetailScreen extends StatelessWidget {
         children: [
           CircleAvatar(
             backgroundImage: NetworkImage(organizer.avatarUrl),
-            //backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d'),
           ),
           const SizedBox(width: 12),
           Column(

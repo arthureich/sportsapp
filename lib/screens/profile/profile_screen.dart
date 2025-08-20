@@ -1,5 +1,3 @@
-// lib/screens/profile/profile_screen.dart
-
 import 'package:flutter/material.dart';
 import '../auth/login_screen.dart';
 import 'settings_screen.dart';
@@ -30,10 +28,9 @@ class ProfileScreen extends StatelessWidget {
         );
         break;
       case ProfileMenuOption.logout:
-        // AÇÃO DE LOGOUT: Remove todas as telas e volta para o Login
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (Route<dynamic> route) => false, // Esta condição remove todas as rotas anteriores
+          (Route<dynamic> route) => false, // Remove todas as rotas anteriores
         );
         break;
     }
@@ -93,9 +90,7 @@ class ProfileScreen extends StatelessWidget {
           },
           body: const TabBarView(
             children: [
-              // Conteúdo da Aba 1: Meus Eventos
               Center(child: Text("Lista de eventos participados aqui")),
-              // Conteúdo da Aba 2: Conquistas
               Center(child: Text("Grid de conquistas aqui")),
             ],
           ),

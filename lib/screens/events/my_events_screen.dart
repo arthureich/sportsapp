@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../api/event_service.dart'; // Para buscar os eventos (mock por enquanto)
-import '../../models/event_model.dart'; // Para o modelo de Event
-import '../events/event_detail_screen.dart'; // Para navegar aos detalhes
+import '../../api/event_service.dart'; 
+import '../../models/event_model.dart'; 
+import '../events/event_detail_screen.dart'; 
 
 class MyEventsScreen extends StatelessWidget {
 const MyEventsScreen({super.key});
@@ -10,7 +10,6 @@ const MyEventsScreen({super.key});
 Widget build(BuildContext context) {
     final EventService eventService = EventService();
     // Simulando que o usuário 'usr01' é o logado
-    // Isso pegará tanto os eventos que ele organiza quanto os que ele participa
     final List<Event> myEvents = eventService.getEvents()
         .where((event) => 
             event.organizer.id == 'usr01' || 
@@ -102,8 +101,6 @@ Widget build(BuildContext context) {
                 children: [
                   const Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey),
                   const SizedBox(width: 8),
-                  // ***** CORREÇÃO AQUI *****
-                  // Usando a interpolação de string correta com '$'
                   Text(
                     "${event.dateTime.day}/${event.dateTime.month}/${event.dateTime.year}",
                     style: const TextStyle(color: Colors.grey),
@@ -111,7 +108,6 @@ Widget build(BuildContext context) {
                   const SizedBox(width: 16),
                   const Icon(Icons.access_time_outlined, size: 16, color: Colors.grey),
                   const SizedBox(width: 8),
-                  // ***** CORREÇÃO AQUI *****
                   Text(
                     "${event.dateTime.hour.toString().padLeft(2, '0')}:${event.dateTime.minute.toString().padLeft(2, '0')}",
                     style: const TextStyle(color: Colors.grey),

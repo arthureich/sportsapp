@@ -1,5 +1,3 @@
-// lib/screens/profile/settings_screen.dart
-
 import 'package:flutter/material.dart';
 
 class SettingsScreen extends StatefulWidget {

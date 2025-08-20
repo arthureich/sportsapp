@@ -1,15 +1,12 @@
-// lib/screens/teams/teams_screen.dart
-
 import 'package:flutter/material.dart';
 import 'create_team_screen.dart';
 //import 'package:flutter_svg/flutter_svg.dart';
 
-// Modelo simples para os dados da equipe (pode ser movido para a pasta models)
 class Team {
   final String id;
   final String name;
   final String sport;
-  final String crestUrl; // URL para o brasão/logo da equipe
+  final String crestUrl; 
   final int currentMembers;
   final int maxMembers;
   final bool isPublic;
@@ -35,7 +32,7 @@ class TeamsScreen extends StatefulWidget {
 class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // --- BANCO DE DADOS LOCAL (MOCK) ---
+  // --- BANCO DE DADOS LOCAL ---
   final List<Team> myTeams = [
     Team(id: 't01', name: 'Guerreiros da Grama', sport: 'Futebol', crestUrl: 'assets/icons/team_crest_1.svg', currentMembers: 10, maxMembers: 12, isPublic: false),
     Team(id: 't02', name: 'Reis da Cesta', sport: 'Basquete', crestUrl: 'assets/icons/team_crest_2.svg', currentMembers: 5, maxMembers: 5, isPublic: true),
@@ -81,7 +78,7 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
       ),
       body: Column(
         children: [
-          // Botão Criar Equipe com Gradiente
+          // Criar Equipe
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Container(
@@ -146,7 +143,7 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
   }
 }
 
-// Card de Equipe Repaginado
+// Card de Equipe 
 class TeamCard extends StatelessWidget {
   final Team team;
   const TeamCard({super.key, required this.team});

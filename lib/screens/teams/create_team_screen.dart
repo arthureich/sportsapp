@@ -1,5 +1,3 @@
-// lib/screens/teams/create_team_screen.dart
-
 import 'package:flutter/material.dart';
 
 class CreateTeamScreen extends StatefulWidget {
@@ -34,7 +32,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Seção para o Brasão/Logo da Equipe ---
               Center(
                 child: Stack(
                   children: [

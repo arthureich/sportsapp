@@ -1,9 +1,7 @@
-// lib/api/event_service.dart
-
 import '../models/event_model.dart';
 
 class EventService {
-  // --- NOSSO BANCO DE DADOS LOCAL (MOCK) ---
+  // --- BANCO DE DADOS LOCAL ---
   final List<Event> _mockEvents = [
     Event(
       id: 'evt001',
