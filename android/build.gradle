@@ -1,3 +1,19 @@
+buildscript {
+    // Define a versão do Kotlin que será usada em todo o projeto Android
+    ext.kotlin_version = '1.9.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        // Define a versão do plugin de build do Android
+        classpath 'com.android.tools.build:gradle:8.2.2'
+        // Aponta para o plugin do Kotlin, usando a versão que definimos acima
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -5,7 +21,7 @@ allprojects {
     }
 }
 
-rootProject.buildDir = "../build"
+rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }

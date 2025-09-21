@@ -106,15 +106,15 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 20),
         const CircleAvatar(
           radius: 50,
-          backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=a042581f4e29026704d'),
+          backgroundImage: NetworkImage('https://cdn2.iconfinder.com/data/icons/flatfaces-everyday-people-square/128/sports_shirt_boy_man_face_avatar-512.png'),
         ),
         const SizedBox(height: 12),
         const Text(
-          'Joana da Silva',
+          'Arthur Eich',
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const Text(
-          'Entusiasta de Vôlei e Corrida',
+          'Atleta de futebol e corrida',
           style: TextStyle(fontSize: 16, color: Colors.grey),
         ),
         const SizedBox(height: 20),

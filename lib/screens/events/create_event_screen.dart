@@ -103,6 +103,22 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 },
                  validator: (value) => value == null ? 'Selecione um esporte' : null,
               ),
+                            const SizedBox(height: 20),
+
+              // --- Campo Localização ---
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Localização',
+                  hintText: 'Ex: Parque Central, Rua 123',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, insira a localização.';
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 20),
 
               // --- Seleção de Data e Hora ---

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "551468081879",
+    "project_id": "joga-mais-fb74e",
+    "storage_bucket": "joga-mais-fb74e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:551468081879:android:cf54d8ff94707ea23a4692",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "551468081879-t3k29kqfg225h80gvdi44qlpkj0ajf03.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "551468081879-t3k29kqfg225h80gvdi44qlpkj0ajf03.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
