@@ -1,43 +1,32 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/event_model.dart';
 
 class EventService {
-  // --- BANCO DE DADOS LOCAL ---
-  final List<Event> _mockEvents = [
-    Event(
-      id: 'evt001',
-      title: 'Futebol de Sábado',
-      description: 'Partida amistosa para todos os níveis no gramado principal do parque. O objetivo é se divertir e fazer novos amigos. Leve chuteira e venha jogar!',
-      sport: 'Futebol',
-      dateTime: DateTime(2025, 8, 16, 16, 0), // 16 de Agosto de 2025, 16:00
-      location: Location(name: 'Parque Tarquínio', address: 'Av. Tarquínio Joslin dos Santos, 123'),
-      imageUrl: 'https://images.unsplash.com/photo-1551958214-2d59cc7a2a4a?q=80&w=2071&auto=format&fit=crop',
-      organizer: LocalUser(id: 'usr01', name: 'Carlos Silva', avatarUrl: 'https://i.pravatar.cc/150?u=carlos'),
-      participants: [
-        LocalUser(id: 'usr02', name: 'Ana Beatriz', avatarUrl: 'https://i.pravatar.cc/150?u=ana'),
-        LocalUser(id: 'usr03', name: 'Lucas Souza', avatarUrl: 'https://i.pravatar.cc/150?u=lucas'),
-      ],
-      maxParticipants: 12,
-    ),
-    Event(
-      id: 'evt002',
-      title: 'Corrida no Lago',
-      description: 'Corrida leve de 5km ao redor do Lago Municipal. Ponto de encontro no quiosque principal. Ritmo tranquilo, ideal para iniciantes.',
-      sport: 'Corrida',
-      dateTime: DateTime(2025, 8, 17, 7, 30), // 17 de Agosto de 2025, 07:30
-      location: Location(name: 'Lago Municipal de Cascavel', address: 'Av. Brasil, s/n'),
-      imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop',
-      organizer: LocalUser(id: 'usr02', name: 'Ana Beatriz', avatarUrl: 'https://i.pravatar.cc/150?u=ana'),
-      participants: [
-        LocalUser(id: 'usr01', name: 'Carlos Silva', avatarUrl: 'https://i.pravatar.cc/150?u=carlos'),
-        LocalUser(id: 'usr04', name: 'Mariana Lima', avatarUrl: 'https://i.pravatar.cc/150?u=mariana'),
-        LocalUser(id: 'usr05', name: 'Pedro Costa', avatarUrl: 'https://i.pravatar.cc/150?u=pedro'),
-      ],
-      maxParticipants: 20,
-    ),
-  ];
+  // Referência para a coleção 'eventos' no Firestore.
+  final CollectionReference _eventsCollection =
+      FirebaseFirestore.instance.collection('eventos');
 
-  // Método para buscar todos os eventos (simula uma chamada de API)
-  List<Event> getEvents() {
-    return _mockEvents;
+  // Método para adicionar um novo evento ao Firestore.
+  // Ele recebe um objeto Event, converte para JSON e o envia.
+  Future<void> addEvent(Event event) async {
+    try {
+      await _eventsCollection.add(event.toJson());
+    } catch (e) {
+      if (kDebugMode) {
+        print("Erro ao adicionar evento: $e");
+      }
+    }
+  }
+
+  // Retorna um Stream que "escuta" as mudanças na coleção de eventos.
+  // Sempre que um evento for adicionado, alterado ou removido, o Stream
+  // emitirá uma nova lista de eventos atualizada.
+  Stream<List<Event>> getEvents() {
+    return _eventsCollection.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return Event.fromSnapshot(doc);
+      }).toList();
+    });
   }
 }

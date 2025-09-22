@@ -1,9 +1,6 @@
-// lib/screens/home/home_content.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui';
-
 import '../../api/event_service.dart';
 import '../../models/event_model.dart';
 import '../events/event_detail_screen.dart';
@@ -17,6 +14,7 @@ class HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<HomeContent> {
   String _selectedSport = 'Todos';
+  final EventService _eventService = EventService(); // Instância do serviço de eventos
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +32,8 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildTopFilterBars() {
+  // ... (os métodos _buildTopFilterBars e _buildSportFilterChip continuam os mesmos)
+    Widget _buildTopFilterBars() {
     return Positioned(
       top: MediaQuery.of(context).padding.top + 10,
       left: 16,
@@ -131,10 +130,8 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildSlidingPanel() {
-    final EventService eventService = EventService();
-    final List<Event> events = eventService.getEvents();
 
+  Widget _buildSlidingPanel() {
     return DraggableScrollableSheet(
       initialChildSize: 0.25,
       minChildSize: 0.25,
@@ -151,33 +148,57 @@ class _HomeContentState extends State<HomeContent> {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.8),
               ),
-              child: ListView.builder(
-                controller: scrollController,
-                itemCount: events.length + 1, // +1 para o cabeçalho
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        Container(
-                          width: 40,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[400],
-                            borderRadius: const BorderRadius.all(Radius.circular(12)),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          "${events.length} Eventos encontrados",
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
+              // StreamBuilder para ouvir os eventos do Firebase em tempo real.
+              child: StreamBuilder<List<Event>>(
+                stream: _eventService.getEvents(),
+                builder: (context, snapshot) {
+                  // Enquanto espera pelos dados, mostra um indicador de carregamento.
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  // Se ocorrer um erro.
+                  if (snapshot.hasError) {
+                    debugPrint("Erro no StreamBuilder: ${snapshot.error}"); // Adicionado para depuração
+                    return const Center(
+                      child: Text('Ocorreu um erro ao carregar os eventos.'),
                     );
                   }
-                  final event = events[index - 1];
-                  return _buildEventListItem(event);
+                  // Se não houver dados.
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('Nenhum evento encontrado.'));
+                  }
+
+                  // Quando os dados estiverem disponíveis, constrói a lista.
+                  final events = snapshot.data!;
+                  return ListView.builder(
+                    controller: scrollController,
+                    itemCount: events.length + 1, // +1 para o cabeçalho
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return Column(
+                          children: [
+                            const SizedBox(height: 12),
+                            Container(
+                              width: 40,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[400],
+                                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              "${events.length} Eventos encontrados",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        );
+                      }
+                      final event = events[index - 1];
+                      return _buildEventListItem(event);
+                    },
+                  );
                 },
               ),
             ),
@@ -187,6 +208,7 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
+  // ... (o método _buildEventListItem continua o mesmo)
   Widget _buildEventListItem(Event event) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -213,7 +235,7 @@ class _HomeContentState extends State<HomeContent> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                'https://picsum.photos/seed/${event.id}/200/200', 
+                'https://picsum.photos/seed/${event.id}/200/200',
                 width: 70,
                 height: 70,
                 fit: BoxFit.cover,

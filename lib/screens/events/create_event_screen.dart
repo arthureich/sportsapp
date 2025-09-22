@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../api/event_service.dart';
+import '../../models/event_model.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -9,11 +11,25 @@ class CreateEventScreen extends StatefulWidget {
 
 class _CreateEventScreenState extends State<CreateEventScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _locationController = TextEditingController();
+  bool _isLoading = false;
+
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String? _selectedSport;
 
   final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida'];
+  final EventService _eventService = EventService();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -41,6 +57,63 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
+  // Função para salvar o evento
+  Future<void> _saveEvent() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Cria o objeto Event com os dados do formulário
+    final newEvent = Event(
+      id: '', // O ID será gerado pelo Firestore
+      title: _titleController.text,
+      description: _descriptionController.text,
+      sport: _selectedSport!,
+      dateTime: DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      ),
+      location: Location(name: _locationController.text, address: ''),
+      imageUrl: 'https://images.unsplash.com/photo-1551958214-2d59cc7a2a4a?q=80&w=2071&auto=format&fit=crop',
+      organizer: LocalUser(id: 'usr01', name: 'Carlos Silva', avatarUrl: 'https://i.pravatar.cc/150?u=carlos'),
+      participants: [],
+      maxParticipants: 12,
+    );
+
+    try {
+      // Chama o serviço para adicionar o evento
+      await _eventService.addEvent(newEvent);
+
+      // **CORREÇÃO APLICADA AQUI**
+      // Verifica se o widget ainda está montado antes de usar o context
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Evento publicado com sucesso!')),
+      );
+      Navigator.pop(context); // Volta para a tela anterior
+    } catch (e) {
+      // **CORREÇÃO APLICADA AQUI**
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ocorreu um erro ao publicar o evento.')),
+      );
+    } finally {
+      // **CORREÇÃO APLICADA AQUI**
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,24 +129,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Campo Título ---
               TextFormField(
+                controller: _titleController,
                 decoration: const InputDecoration(
                   labelText: 'Título do Evento',
                   hintText: 'Ex: Futebol de Sábado',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira um título.';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty ? 'Por favor, insira um título.' : null,
               ),
               const SizedBox(height: 20),
-
-              // --- Campo Descrição ---
               TextFormField(
+                controller: _descriptionController,
                 decoration: const InputDecoration(
                   labelText: 'Descrição',
                   hintText: 'Detalhes sobre o evento, regras, etc.',
@@ -82,8 +149,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 20),
-
-              // --- Seleção de Esporte ---
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Esporte',
@@ -101,27 +166,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     _selectedSport = newValue;
                   });
                 },
-                 validator: (value) => value == null ? 'Selecione um esporte' : null,
+                validator: (value) => value == null ? 'Selecione um esporte' : null,
               ),
-                            const SizedBox(height: 20),
-
-              // --- Campo Localização ---
+              const SizedBox(height: 20),
               TextFormField(
+                controller: _locationController,
                 decoration: const InputDecoration(
                   labelText: 'Localização',
                   hintText: 'Ex: Parque Central, Rua 123',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira a localização.';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty ? 'Por favor, insira a localização.' : null,
               ),
               const SizedBox(height: 20),
-
-              // --- Seleção de Data e Hora ---
               Row(
                 children: [
                   Expanded(
@@ -152,8 +209,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ],
               ),
               const SizedBox(height: 40),
-
-              // --- Botão de Salvar ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -165,15 +220,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Lógica para salvar o evento
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Salvando evento...')),
-                      );
-                    }
-                  },
-                  child: const Text('PUBLICAR EVENTO', style: TextStyle(fontSize: 16)),
+                  onPressed: _isLoading ? null : _saveEvent, // Chama a nova função async
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0)
+                      : const Text('PUBLICAR EVENTO', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
