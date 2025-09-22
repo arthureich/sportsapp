@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../api/team_service.dart';
+import '../../models/team_model.dart';
 
 class CreateTeamScreen extends StatefulWidget {
   const CreateTeamScreen({super.key});
@@ -9,11 +11,60 @@ class CreateTeamScreen extends StatefulWidget {
 
 class _CreateTeamScreenState extends State<CreateTeamScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  bool _isLoading = false;
+
   String? _selectedSport;
   bool _isPublic = true;
   double _maxMembers = 10.0;
 
   final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Outro'];
+  final TeamService _teamService = TeamService();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveTeam() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final newTeam = Team(
+      id: '', // O Firestore irá gerar o ID
+      name: _nameController.text,
+      description: _descriptionController.text,
+      sport: _selectedSport!,
+      crestUrl: '', // Pode adicionar a lógica de upload de imagem aqui mais tarde
+      currentMembers: 1, // Começa com 1 membro (o criador)
+      maxMembers: _maxMembers.toInt(),
+      isPublic: _isPublic,
+    );
+
+    try {
+      await _teamService.addTeam(newTeam);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Equipa criada com sucesso!')),
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ocorreu um erro ao criar a equipa.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +110,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
 
               // --- Campo Nome da Equipe ---
               TextFormField(
+                controller: _nameController,
                 decoration: _buildInputDecoration(label: 'Nome da Equipe'),
                 validator: (value) => (value == null || value.isEmpty) ? 'Dê um nome para sua equipe.' : null,
               ),
@@ -76,6 +128,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
 
               // --- Campo Descrição ---
               TextFormField(
+                controller: _descriptionController,
                 decoration: _buildInputDecoration(label: 'Descrição (Opcional)'),
                 maxLines: 3,
               ),
@@ -125,16 +178,10 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
                 ),
                 child: ElevatedButton(
                   style: _buildButtonStyle(),
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Lógica para salvar a equipe
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Equipe criada com sucesso!')),
-                      );
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text('SALVAR EQUIPE'),
+                  onPressed: _isLoading ? null : _saveTeam,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0)
+                      : const Text('SALVAR EQUIPE'),
                 ),
               ),
             ],

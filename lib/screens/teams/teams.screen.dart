@@ -1,26 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../api/team_service.dart';
+import '../../models/team_model.dart';
 import 'create_team_screen.dart';
-//import 'package:flutter_svg/flutter_svg.dart';
-
-class Team {
-  final String id;
-  final String name;
-  final String sport;
-  final String crestUrl; 
-  final int currentMembers;
-  final int maxMembers;
-  final bool isPublic;
-
-  Team({
-    required this.id,
-    required this.name,
-    required this.sport,
-    required this.crestUrl,
-    required this.currentMembers,
-    required this.maxMembers,
-    required this.isPublic,
-  });
-}
 
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
@@ -31,18 +13,7 @@ class TeamsScreen extends StatefulWidget {
 
 class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // --- BANCO DE DADOS LOCAL ---
-  final List<Team> myTeams = [
-    Team(id: 't01', name: 'Guerreiros da Grama', sport: 'Futebol', crestUrl: 'assets/icons/team_crest_1.svg', currentMembers: 10, maxMembers: 12, isPublic: false),
-    Team(id: 't02', name: 'Reis da Cesta', sport: 'Basquete', crestUrl: 'assets/icons/team_crest_2.svg', currentMembers: 5, maxMembers: 5, isPublic: true),
-  ];
-  
-  final List<Team> exploreTeams = [
-    Team(id: 't03', name: 'Corredores de Cascavel', sport: 'Corrida', crestUrl: 'assets/icons/team_crest_3.svg', currentMembers: 25, maxMembers: 50, isPublic: true),
-    Team(id: 't04', name: 'Vôlei de Quinta', sport: 'Vôlei', crestUrl: 'assets/icons/team_crest_4.svg', currentMembers: 8, maxMembers: 10, isPublic: true),
-    Team(id: 't02', name: 'Reis da Cesta', sport: 'Basquete', crestUrl: 'assets/icons/team_crest_2.svg', currentMembers: 5, maxMembers: 5, isPublic: true),
-  ];
+final TeamService _teamService = TeamService(); // Instância do serviço
 
   @override
   void initState() {
@@ -55,7 +26,6 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
     _tabController.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -78,19 +48,19 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
       ),
       body: Column(
         children: [
-          // Criar Equipe
+          // Botão Criar Equipe (sem alteração)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)], // Verde escuro e claro
+                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
+                  BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
                 ],
               ),
               child: ElevatedButton.icon(
@@ -112,7 +82,6 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
             ),
           ),
           
-          // Abas Animadas
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: AnimatedTabBar(tabController: _tabController),
@@ -122,8 +91,10 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildTeamList(myTeams),
-                _buildTeamList(exploreTeams),
+                // Aba 'Minhas Equipes' com StreamBuilder
+                _buildTeamsStream(isMyTeams: true),
+                // Aba 'Explorar' com StreamBuilder
+                _buildTeamsStream(isMyTeams: false),
               ],
             ),
           ),
@@ -131,8 +102,38 @@ class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStat
       ),
     );
   }
+
+  // Widget que constrói a lista a partir de um Stream do Firebase
+  Widget _buildTeamsStream({required bool isMyTeams}) {
+    // Lógica de filtragem (ainda simulada, pode ser melhorada com queries no futuro)
+    // Por agora, 'Minhas Equipes' mostra equipas privadas e 'Explorar' mostra públicas
+    return StreamBuilder<List<Team>>(
+      stream: _teamService.getTeams(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Erro ao carregar as equipas.'));
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('Nenhuma equipa encontrada.'));
+        }
+
+        final allTeams = snapshot.data!;
+        final filteredTeams = allTeams.where((team) {
+          return isMyTeams ? !team.isPublic : team.isPublic;
+        }).toList();
+
+        return _buildTeamList(filteredTeams);
+      },
+    );
+  }
   
   Widget _buildTeamList(List<Team> teams) {
+    if (teams.isEmpty) {
+        return Center(child: Text( 'Nenhuma equipa encontrada nesta categoria.', style: TextStyle(color: Colors.grey[600])));
+    }
     return ListView.builder(
       padding: const EdgeInsets.only(top: 8),
       itemCount: teams.length,
