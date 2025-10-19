@@ -25,6 +25,16 @@ class EventDetailScreen extends StatelessWidget {
                 fit: BoxFit.cover,
                 color: Colors.black.withValues(),
                 colorBlendMode: BlendMode.darken,
+                errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
+                  return Container(
+                    color: Colors.grey[200],
+                    child: Icon(
+                      Icons.sports_soccer, // Ícone de fallback
+                      color: Colors.grey[400],
+                      size: 60,
+                    ),
+                  );
+                },
               ),
             ),
           ),

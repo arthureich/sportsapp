@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 class Team {
   final String id;
@@ -41,8 +40,8 @@ class Team {
 
     return Team(
       id: snapshot.id,
-      name: data['name'] ?? 'Equipa Sem Nome',
-      sport: data['sport'] ?? 'Desporto Indefinido',
+      name: data['name'] ?? 'Equipe Sem Nome',
+      sport: data['sport'] ?? 'Esporte não definido',
       crestUrl: data['crestUrl'] ?? '',
       description: data['description'] ?? '',
       currentMembers: data['currentMembers'] ?? 1,

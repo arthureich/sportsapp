@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../api/team_service.dart';
 import '../../models/team_model.dart';
 import 'create_team_screen.dart';
@@ -60,7 +59,7 @@ final TeamService _teamService = TeamService(); // Instância do serviço
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
+                  BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
                 ],
               ),
               child: ElevatedButton.icon(
@@ -106,7 +105,7 @@ final TeamService _teamService = TeamService(); // Instância do serviço
   // Widget que constrói a lista a partir de um Stream do Firebase
   Widget _buildTeamsStream({required bool isMyTeams}) {
     // Lógica de filtragem (ainda simulada, pode ser melhorada com queries no futuro)
-    // Por agora, 'Minhas Equipes' mostra equipas privadas e 'Explorar' mostra públicas
+    // Por agora, 'Minhas Equipes' mostra equipes privadas e 'Explorar' mostra públicas
     return StreamBuilder<List<Team>>(
       stream: _teamService.getTeams(),
       builder: (context, snapshot) {
@@ -114,10 +113,10 @@ final TeamService _teamService = TeamService(); // Instância do serviço
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return const Center(child: Text('Erro ao carregar as equipas.'));
+          return const Center(child: Text('Erro ao carregar as equipes.'));
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('Nenhuma equipa encontrada.'));
+          return const Center(child: Text('Nenhuma equipe encontrada.'));
         }
 
         final allTeams = snapshot.data!;
@@ -132,7 +131,7 @@ final TeamService _teamService = TeamService(); // Instância do serviço
   
   Widget _buildTeamList(List<Team> teams) {
     if (teams.isEmpty) {
-        return Center(child: Text( 'Nenhuma equipa encontrada nesta categoria.', style: TextStyle(color: Colors.grey[600])));
+        return Center(child: Text( 'Nenhuma equipe encontrada nesta categoria.', style: TextStyle(color: Colors.grey[600])));
     }
     return ListView.builder(
       padding: const EdgeInsets.only(top: 8),

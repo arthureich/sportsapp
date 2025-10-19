@@ -51,13 +51,13 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
       await _teamService.addTeam(newTeam);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Equipa criada com sucesso!')),
+        const SnackBar(content: Text('Equipe criada com sucesso!')),
       );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ocorreu um erro ao criar a equipa.')),
+        const SnackBar(content: Text('Ocorreu um erro ao criar a equipe.')),
       );
     } finally {
       if (mounted) {
