@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../api/team_service.dart';
 import '../../models/team_model.dart';
 
@@ -34,6 +35,15 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
       return;
     }
 
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erro: Você precisa estar logado para criar uma equipe.')),
+        );
+        return;
+    }
+    
     setState(() => _isLoading = true);
 
     final newTeam = Team(

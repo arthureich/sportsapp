@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../models/event_model.dart'; 
+import '../../api/event_service.dart';
+import '../../models/event_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../models/user_model.dart';
 
 class EventDetailScreen extends StatelessWidget {
   // Recebe um objeto Event no construtor

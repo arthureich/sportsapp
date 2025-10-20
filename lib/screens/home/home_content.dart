@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart';
 import '../events/event_detail_screen.dart';
@@ -14,17 +15,62 @@ class HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<HomeContent> {
   String _selectedSport = 'Todos';
-  final EventService _eventService = EventService(); // Instância do serviço de eventos
+  final EventService _eventService = EventService(); 
+  static const LatLng _initialPosition = LatLng(-24.9555, -53.4552);
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Image.asset(
-          'assets/images/mapa_placeholder.png',
-          width: double.infinity,
-          height: double.infinity,
-          fit: BoxFit.cover,
+        // O StreamBuilder agora constrói o mapa e os marcadores
+        StreamBuilder<List<Event>>(
+          stream: _eventService.getEvents(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              debugPrint("Erro no mapa: ${snapshot.error}");
+              return const Center(child: Text('Não foi possível carregar o mapa.'));
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const GoogleMap(
+                initialCameraPosition: CameraPosition(target: _initialPosition, zoom: 13),
+              );
+            }
+
+            // Transforma a lista de eventos em um conjunto de marcadores
+            final events = snapshot.data!;
+            final markers = events.map((event) {
+              return Marker(
+                markerId: MarkerId(event.id),
+                position: LatLng(
+                  event.location.coordinates.latitude,
+                  event.location.coordinates.longitude,
+                ),
+                infoWindow: InfoWindow(
+                  title: event.title,
+                  snippet: event.location.name,
+                  onTap: () {
+                    // Navega para a tela de detalhes quando o balão de informação é tocado
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => EventDetailScreen(event: event),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }).toSet();
+
+            return GoogleMap(
+              initialCameraPosition: const CameraPosition(
+                target: _initialPosition,
+                zoom: 13,
+              ),
+              markers: markers,
+            );
+          },
         ),
         _buildSlidingPanel(),
         _buildTopFilterBars(),
