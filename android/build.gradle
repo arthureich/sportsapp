@@ -1,6 +1,6 @@
 buildscript {
     // Define a versão do Kotlin que será usada em todo o projeto Android
-    ext.kotlin_version = '1.9.22'
+    ext.kotlin_version = '1.8.22'
     repositories {
         google()
         mavenCentral()
@@ -8,7 +8,7 @@ buildscript {
 
     dependencies {
         // Define a versão do plugin de build do Android
-        classpath 'com.android.tools.build:gradle:8.2.2'
+        classpath 'com.android.tools.build:gradle:7.4.2'
         // Aponta para o plugin do Kotlin, usando a versão que definimos acima
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
@@ -18,6 +18,17 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+    subprojects {
+        afterEvaluate { project ->
+            if (project.hasProperty('android')) {
+                project.android {
+                    if (namespace == null) {
+                        namespace project.group
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -31,4 +42,12 @@ subprojects {
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
+}
+
+subprojects {
+    project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
+    }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_google_places/flutter_google_places.dart';
+//import 'package:async/async.dart';
+//import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:google_maps_webservice/places.dart';
+import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart' as event_model;
 
@@ -38,7 +40,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     super.dispose();
   }
   
-  Future<void> _handlePressButton() async {
+  /*Future<void> _handlePressButton() async {
     Prediction? p = await PlacesAutocomplete.show(
       context: context,
       apiKey: kGoogleApiKey,
@@ -59,7 +61,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _selectedGeoPoint = GeoPoint(lat, lng);
       });
     }
-  }
+  }*/
 
   Future<void> _saveEvent() async {
     if (!_formKey.currentState!.validate()) return;
@@ -176,25 +178,26 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               const SizedBox(height: 20),
 
               // --- NOVO CAMPO DE LOCALIZAÇÃO ---
-              TextFormField(
-                controller: _locationController,
-                readOnly: true, // Impede a digitação direta
-                decoration: InputDecoration(
-                  labelText: 'Localização',
-                  hintText: 'Clique para buscar o endereço',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: _handlePressButton,
-                  )
-                ),
-                onTap: _handlePressButton, // Abre a busca ao tocar
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, selecione um local.';
-                  }
-                  return null;
-                },
+              GooglePlacesAutoCompleteTextFormField(
+                  textEditingController: _locationController,
+                  googleAPIKey: kGoogleApiKey,
+                  countries: const ["br"], // Filtra para o Brasil
+                  decoration: const InputDecoration(
+                    labelText: "Localização",
+                    hintText: "Digite o nome do local ou endereço",
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.search),
+                  ),
+                  // Função chamada quando um local é selecionado
+                  onPlaceDetailsWithCoordinatesReceived: (placesDetails) {
+                    final lat = placesDetails.lat;
+                    final lng = placesDetails.lng;
+                    if (lat != null && lng != null) {
+                      setState(() {
+                        _selectedGeoPoint = GeoPoint(lat as double, lng as double);
+                      });
+                    }
+                  },
               ),
               const SizedBox(height: 20),
 
