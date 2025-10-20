@@ -23,3 +23,23 @@ plugins {
 }
 
 include ":app"
+
+try {
+    def file = new File(project.projectDir.parentFile, "flutter_application_1/.android/include_flutter.groovy")
+    if (file.exists()) {
+        evaluate(file)
+    }
+} catch (Exception e) {
+    // Ignora o erro se o arquivo não for encontrado, o que é normal em alguns cenários de build
+}
+
+// Configuração para forçar um namespace nos pacotes problemáticos
+gradle.beforeProject { project ->
+    if (project.name.equals("google_api_headers")) {
+        project.afterEvaluate {
+            android {
+                namespace "com.example.flutter_application_1"
+            }
+        }
+    }
+}
