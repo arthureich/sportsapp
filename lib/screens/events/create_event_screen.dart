@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_maps_places_autocomplete_widgets/address_autocomplete_widgets.dart';
 //import 'package:async/async.dart';
 //import 'package:flutter_google_places/flutter_google_places.dart';
 //import 'package:google_maps_webservice/places.dart';
-import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
+//import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart' as event_model;
 
@@ -180,26 +181,57 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               const SizedBox(height: 20),
 
               // --- NOVO CAMPO DE LOCALIZAÇÃO ---
-              GooglePlacesAutoCompleteTextFormField(
-                  textEditingController: _locationController,
-                  googleAPIKey: kGoogleApiKey,
-                  countries: const ["br"], // Filtra para o Brasil
-                  decoration: const InputDecoration(
-                    labelText: "Localização",
-                    hintText: "Digite o nome do local ou endereço",
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.search),
-                  ),
-                  // Função chamada quando um local é selecionado
-                  onPlaceDetailsWithCoordinatesReceived: (placesDetails) {
-                    final lat = placesDetails.lat;
-                    final lng = placesDetails.lng;
-                    if (lat != null && lng != null) {
-                      setState(() {
-                        _selectedGeoPoint = GeoPoint(lat as double, lng as double);
-                      });
-                    }
-                  },
+              AddressAutocompleteTextFormField(
+                // Configurações básicas
+                mapsApiKey: kGoogleApiKey,
+                controller: _locationController, // Usa o controller existente
+                componentCountry: 'br', // Filtra para o Brasil
+                language: 'pt-BR', // Define o idioma para português do Brasil
+                debounceTime: 400, // Tempo de espera antes de buscar (ms)
+
+                // Configurações da aparência
+                decoration: const InputDecoration(
+                  labelText: "Localização",
+                  hintText: "Digite o nome do local ou endereço",
+                  border: OutlineInputBorder(),
+                  suffixIcon: Icon(Icons.search),
+                ),
+                style: Theme.of(context).textTheme.bodyLarge, // Usa o estilo de texto padrão
+
+                // Callbacks
+                onSuggestionClick: (placeDetails) {
+                  // Chamado quando o usuário clica em uma sugestão E os detalhes foram buscados
+                  debugPrint('onSuggestionClick( placeDetails:$placeDetails )'); // Para depuração
+                  final lat = placeDetails.lat;
+                  final lng = placeDetails.lng;
+
+                  if (lat != null && lng != null) {
+                    setState(() {
+                      // O controller já é atualizado automaticamente pelo pacote
+                      _selectedGeoPoint = GeoPoint(lat, lng);
+                    });
+                  } else {
+                    setState(() { _selectedGeoPoint = null; });
+                     ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text('Não foi possível obter as coordenadas para este local.'))
+                     );
+                  }
+                  // Esconde o teclado após selecionar
+                  FocusScope.of(context).unfocus();
+                },
+                 onInitialSuggestionClick: (suggestion) {
+                   // Chamado IMEDIATAMENTE quando o usuário clica, antes de buscar detalhes.
+                   // Útil se você quiser mostrar um loading, por exemplo.
+                   debugPrint('Clique inicial: ${suggestion.description}');
+                 },
+                 onFinishedEditingWithNoSuggestion: (text) {
+                   // Chamado se o usuário sair do campo sem escolher uma sugestão válida
+                   debugPrint('Terminou de editar sem sugestão: $text');
+                   // Importante: Limpa a coordenada se o usuário não escolheu da lista
+                   setState(() { _selectedGeoPoint = null; });
+                 },
+                 // Você pode customizar a aparência dos itens da lista de sugestões aqui
+                 // buildItem: (Suggestion suggestion, int index) { ... },
               ),
               const SizedBox(height: 20),
 
