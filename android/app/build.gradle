@@ -1,5 +1,5 @@
 plugins {
-    id "com.example.flutter_application_1"
+    id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
 }

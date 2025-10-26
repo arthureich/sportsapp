@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 //import 'package:async/async.dart';
 //import 'package:flutter_google_places/flutter_google_places.dart';
-import 'package:google_maps_webservice/places.dart';
+//import 'package:google_maps_webservice/places.dart';
 import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart' as event_model;
 
-const kGoogleApiKey = "AIzaSyC2H9FLjMW7NJ6AoGH2bht3kBQ-zfn197A";
+
+final kGoogleApiKey = dotenv.env['kGoogleApiKey'] ?? 'fallback_key';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
