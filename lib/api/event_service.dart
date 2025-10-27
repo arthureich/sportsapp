@@ -5,17 +5,17 @@ import '../models/event_model.dart';
 import '../models/user_model.dart';
 
 class EventService {
-  // Referência para a coleção 'eventos' no Firestore.
   final CollectionReference _eventsCollection =
       FirebaseFirestore.instance.collection('eventos');
 
   final CollectionReference _usersCollection = FirebaseFirestore.instance.collection('usuarios');
+
   Stream<List<Event>> getEvents() {
     return _eventsCollection.orderBy('dateTime', descending: false).snapshots().map((snapshot) {
       return snapshot.docs.map((doc) => Event.fromSnapshot(doc)).toList();
     });
   }
-  // Retorna um Stream que "escuta" as mudanças em um evento específico.
+  
   Stream<DocumentSnapshot> getEventStream(String eventId) {
     return _eventsCollection.doc(eventId).snapshots();
   }
@@ -32,20 +32,43 @@ class EventService {
     }
      await _eventsCollection.add(event.toJson());
   }
-  Future<UserModel> getUserData(String userId) async {
-    final userDoc = await _usersCollection.doc(userId).get();
-    if (!userDoc.exists) {
-      throw Exception('Usuário não encontrado.');
-    }
-    return UserModel.fromSnapshot(userDoc);
+  }
+
+  Future<void> joinEvent(String eventId, LocalUser user) async {
+    try {
+      await _eventsCollection.doc(eventId).update({
+        'participants': FieldValue.arrayUnion([user.toJson()]) 
+      });
+    } catch (e) {
+      debugPrint("Erro ao entrar no evento: $e");
+      rethrow;
     }
   }
 
-  Future<List<UserModel>> getUsersData(List<String> userIds) async {
-    if (userIds.isEmpty) {
-      return [];
+  Future<void> leaveEvent(String eventId, LocalUser user) async {
+    try {
+      await _eventsCollection.doc(eventId).update({
+        'participants': FieldValue.arrayRemove([user.toJson()]) 
+      });
+    } catch (e) {
+      debugPrint("Erro ao sair do evento: $e");
+      rethrow;
     }
-    final userSnapshots = await _usersCollection.where(FieldPath.documentId, whereIn: userIds).get();
-    return userSnapshots.docs.map((doc) => UserModel.fromSnapshot(doc)).toList();
+  }
+
+Future<UserModel> getUserData(String userId) async {
+      final userDoc = await _usersCollection.doc(userId).get();
+      if (!userDoc.exists) {
+        throw Exception('Usuário não encontrado.');
+      }
+      return UserModel.fromSnapshot(userDoc);
+  }
+
+  Future<List<UserModel>> getUsersData(List<String> userIds) async {
+      if (userIds.isEmpty) {
+        return [];
+      }
+      final userSnapshots = await _usersCollection.where(FieldPath.documentId, whereIn: userIds).get();
+      return userSnapshots.docs.map((doc) => UserModel.fromSnapshot(doc)).toList();
   }
 }
