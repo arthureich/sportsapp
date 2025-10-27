@@ -1,15 +1,12 @@
+import 'dart:async'; 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_maps_places_autocomplete_widgets/address_autocomplete_widgets.dart';
-//import 'package:async/async.dart';
-//import 'package:flutter_google_places/flutter_google_places.dart';
-//import 'package:google_maps_webservice/places.dart';
-//import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
+import 'package:google_maps_apis/places.dart';
+import '../../data/predefined_locations.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart' as event_model;
-
 
 final kGoogleApiKey = dotenv.env['kGoogleApiKey'] ?? 'fallback_key';
 
@@ -26,131 +23,266 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   bool _isLoading = false;
+  bool _isPredictionLoading = false;
+  bool _isDetailsLoading = false;
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String? _selectedSport;
   GeoPoint? _selectedGeoPoint;
+  PlaceDetails? _placeDetails;
+  PredefinedLocation? _selectedPredefinedLocation;
+
+  late GoogleMapsPlaces _places;
+  List<Prediction> _apiPredictions = [];
+  List<PredefinedLocation> _filteredPredefinedLocations = [];
+  String? _sessionToken;
+  Timer? _debounce;
 
   final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida'];
   final EventService _eventService = EventService();
 
   @override
+  void initState() {
+    super.initState();
+    _places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
+    _generateSessionToken();
+    _filteredPredefinedLocations = predefinedLocationsCascavel; // 4. Inicializa mostrando todos
+   _locationController.addListener(_onSearchChanged);
+  }
+
+  void _generateSessionToken() {
+    _sessionToken = DateTime.now().microsecondsSinceEpoch.toString();
+     debugPrint("Novo Session Token: $_sessionToken");
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _locationController.removeListener(_onSearchChanged);
     _locationController.dispose();
+    _debounce?.cancel();
+    _places.dispose();
     super.dispose();
   }
-  
-  /*Future<void> _handlePressButton() async {
-    Prediction? p = await PlacesAutocomplete.show(
-      context: context,
-      apiKey: kGoogleApiKey,
-      mode: Mode.overlay,
-      language: "pt",
-      components: [Component(Component.country, "br")],
-    );
 
-    if (p != null) {
-      final places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
-      PlacesDetailsResponse detail = await places.getDetailsByPlaceId(p.placeId!);
-      
-      final lat = detail.result.geometry!.location.lat;
-      final lng = detail.result.geometry!.location.lng;
+  void _onSearchChanged() {
+   if (_debounce?.isActive ?? false) _debounce!.cancel();
+   _debounce = Timer(const Duration(milliseconds: 300), () {
+     final inputText = _locationController.text;
+     // Define o nome selecionado (pode ser de API ou pré-definido)
+     final selectedName = _selectedPredefinedLocation?.name ?? _placeDetails?.name ?? _placeDetails?.formattedAddress;
 
-      setState(() {
-        _locationController.text = detail.result.name;
-        _selectedGeoPoint = GeoPoint(lat, lng);
-      });
+     // Limpa seleção anterior se o texto mudar E não for o nome já selecionado
+     if (_selectedGeoPoint != null && inputText != selectedName) {
+       if (mounted) setState(() { _selectedGeoPoint = null; _placeDetails = null; _selectedPredefinedLocation = null; });
+     }
+
+     // Filtra locais pré-definidos
+     final filtered = predefinedLocationsCascavel
+         .where((loc) =>
+              loc.name.toLowerCase().contains(inputText.toLowerCase()) ||
+              loc.description.toLowerCase().contains(inputText.toLowerCase()) // Busca na descrição também
+          )
+         .toList();
+
+     if (mounted) {
+       setState(() {
+         _filteredPredefinedLocations = filtered;
+       });
+     }
+
+     // Busca na API se o texto for > 2 caracteres E não houver uma seleção válida ainda
+     if (inputText.length > 2 && _selectedGeoPoint == null) {
+       _fetchAutocompleteSuggestions(inputText);
+     } else if (inputText.isEmpty) {
+       // Se o campo está vazio, mostra todos os pré-definidos e limpa API
+       if (mounted) {
+         setState(() {
+           _filteredPredefinedLocations = predefinedLocationsCascavel;
+           _apiPredictions = [];
+           _placeDetails = null;
+           _selectedGeoPoint = null;
+           _selectedPredefinedLocation = null;
+         });
+       }
+     } else {
+        // Se o texto for curto ou já houver seleção, limpa apenas as sugestões da API
+        if (mounted) {
+           setState(() { _apiPredictions = []; });
+        }
+     }
+   });
+ }
+
+  Future<void> _fetchAutocompleteSuggestions(String input) async {
+    if (!mounted || _sessionToken == null) return;
+    setState(() => _isPredictionLoading = true);
+    try {
+      final response = await _places.autocomplete(
+        input,
+        sessionToken: _sessionToken,
+        language: 'pt-BR',
+        components: [Component(Component.country, "br")],
+        types: ["establishment"],
+        location: Location(lat: -24.9555, lng: -53.4552),
+        radius: 50000,
+        strictbounds: false,
+      );
+      if (!mounted) return;
+      if (response.isOk) {
+        setState(() => _apiPredictions = response.predictions!);
+      } else {
+        debugPrint("Erro Autocomplete: ${response.errorMessage}");
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao buscar sugestões: ${response.errorMessage}')));
+      }
+    } catch (e) {
+      debugPrint("Exceção Autocomplete: $e");
+    } finally {
+      if (mounted) setState(() => _isPredictionLoading = false);
     }
-  }*/
+  }
+
+  Future<void> _handleSelection(dynamic selection) async {
+     if (selection is Prediction) {
+        await _fetchPlaceDetails(selection); // Chama busca de detalhes da API
+     } else if (selection is PredefinedLocation) {
+        _selectPredefinedLocation(selection); // Seleciona local pré-definido
+     }
+ }
+
+ // 7. NOVA função para selecionar um local pré-definido
+ void _selectPredefinedLocation(PredefinedLocation location) {
+   if (!mounted) return;
+   setState(() {
+     _locationController.removeListener(_onSearchChanged);
+     _locationController.text = location.name; // Atualiza o campo de texto
+     _locationController.addListener(_onSearchChanged);
+
+     _selectedGeoPoint = location.coordinates; // Guarda as coordenadas
+     _selectedPredefinedLocation = location; // Guarda o local pré-definido selecionado
+     _placeDetails = null; // Limpa detalhes da API
+     _apiPredictions = []; // Limpa sugestões da API
+     _filteredPredefinedLocations = []; // Esconde a lista
+   });
+   FocusScope.of(context).unfocus(); // Esconde o teclado
+   debugPrint("Pré-definido selecionado: ${location.name}");
+ }
+
+  Future<void> _fetchPlaceDetails(Prediction prediction) async {
+    final placeId = prediction.placeId;
+    if (placeId == null || !mounted || _sessionToken == null) return;
+
+    _locationController.removeListener(_onSearchChanged);
+   _locationController.text = prediction.description ?? '';
+   _locationController.addListener(_onSearchChanged);
+
+    setState(() { _isDetailsLoading = true; _apiPredictions = []; _filteredPredefinedLocations = []; _selectedPredefinedLocation = null; });
+
+    try {
+      final response = await _places.getDetailsByPlaceId( placeId, sessionToken: _sessionToken, language: 'pt-BR', fields: ["name", "formatted_address", "geometry"]);
+      if (!mounted) return;
+      if (response.isOk && response.result != null) {
+        final details = response.result!;
+        final lat = details.geometry?.location.lat;
+        final lng = details.geometry?.location.lng;
+        setState(() {
+          _placeDetails = details;
+          _locationController.removeListener(_onSearchChanged);
+          if (details.formattedAddress != null && _locationController.text != details.formattedAddress) {
+             _locationController.text = details.formattedAddress!;
+          }
+          else if (details.name != null) { _locationController.text = details.name!; }
+          _locationController.addListener(_onSearchChanged);
+          if (lat != null && lng != null) {
+            _selectedGeoPoint = GeoPoint(lat, lng);
+          } else {
+            _selectedGeoPoint = null;
+             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível obter as coordenadas.')));
+          }
+        });
+        _generateSessionToken();
+         FocusScope.of(context).unfocus();
+      } else {
+        debugPrint("Erro Detalhes: ${response.errorMessage}");
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao buscar detalhes: ${response.errorMessage}')));
+        setState(() => _selectedGeoPoint = null);
+      }
+    } catch (e) {
+      debugPrint("Exceção Detalhes: $e");
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao buscar detalhes.')));
+      setState(() => _selectedGeoPoint = null);
+    } finally {
+       if (mounted) setState(() => _isDetailsLoading = false);
+    }
+  }
 
   Future<void> _saveEvent() async {
-    if (!_formKey.currentState!.validate()) return;
-    
-    if (_selectedGeoPoint == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecione um local válido.')),
-      );
-      return;
+    if (!_formKey.currentState!.validate()){return; }
+    if (_selectedGeoPoint == null || _locationController.text.isEmpty) { 
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecione uma localização válida.')));
+       return; }
+    if (_selectedDate == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Por favor, selecione a data do evento.')),
+        );
+        return;
     }
-    
+    if (_selectedTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Por favor, selecione a hora do evento.')),
+        );
+        return;
+    }
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro: Você precisa estar logado para criar um evento.')),
-      );
-      return;
-    }
+    if (currentUser == null) { 
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você precisa estar logado para criar um evento.')));
+       return; }
+    final locationName = _selectedPredefinedLocation?.name ?? _placeDetails?.name ?? _locationController.text;
+    final locationAddress = _placeDetails?.formattedAddress ?? (_selectedPredefinedLocation != null ? _selectedPredefinedLocation!.description : '');
 
     setState(() => _isLoading = true);
-
     final newEvent = event_model.Event(
-      id: '',
-      title: _titleController.text,
-      description: _descriptionController.text,
+      id: '', title: _titleController.text, description: _descriptionController.text,
       sport: _selectedSport!,
       dateTime: DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedTime!.hour, _selectedTime!.minute),
       location: event_model.Location(
-        name: _locationController.text,
-        address: '', 
+        name: locationName,
+        address: locationAddress,
         coordinates: _selectedGeoPoint!,
       ),
       imageUrl: 'https://images.unsplash.com/photo-1551958214-2d59cc7a2a4a?q=80&w=2071&auto=format&fit=crop',
       organizer: event_model.LocalUser(id: currentUser.uid, name: currentUser.displayName ?? 'Usuário Anônimo', avatarUrl: currentUser.photoURL ?? ''),
-      participants: [],
-      maxParticipants: 12,
+      participants: [], maxParticipants: 12,
     );
-
     try {
       await _eventService.addEvent(newEvent);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Evento publicado com sucesso!')));
       Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ocorreu um erro ao publicar o evento.')));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    } catch (e) { if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao publicar evento.'))); // Mensagem genérica
+      debugPrint("Erro ao salvar evento: $e"); // Log detalhado 
+      }
+    finally { if (mounted) setState(() => _isLoading = false); }
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+      final DateTime? picked = await showDatePicker( context: context, initialDate: _selectedDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2101), );
+      if (picked != null && picked != _selectedDate) setState(() => _selectedDate = picked);
   }
-
   Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
-    );
-    if (picked != null && picked != _selectedTime) {
-      setState(() {
-        _selectedTime = picked;
-      });
-    }
+      final TimeOfDay? picked = await showTimePicker( context: context, initialTime: _selectedTime ?? TimeOfDay.now(), );
+      if (picked != null && picked != _selectedTime) setState(() => _selectedTime = picked);
   }
 
-
-@override
+  @override
   Widget build(BuildContext context) {
+    final combinedListLength = _filteredPredefinedLocations.length + _apiPredictions.length;
+    final bool showSuggestions = (_filteredPredefinedLocations.isNotEmpty || _apiPredictions.isNotEmpty) && !_isDetailsLoading;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Criar Novo Evento'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Criar Novo Evento'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
@@ -158,7 +290,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ... Campos de Título, Descrição, Esporte ...
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(labelText: 'Título do Evento', hintText: 'Ex: Futebol de Sábado', border: OutlineInputBorder()),
@@ -171,70 +302,77 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 20),
+              // --- Esporte ---
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Esporte', border: OutlineInputBorder()),
                 value: _selectedSport,
+                // **CORREÇÃO AQUI**
                 items: _sports.map((String sport) => DropdownMenuItem<String>(value: sport, child: Text(sport))).toList(),
                 onChanged: (newValue) => setState(() => _selectedSport = newValue),
                 validator: (value) => value == null ? 'Selecione um esporte' : null,
               ),
               const SizedBox(height: 20),
 
-              // --- NOVO CAMPO DE LOCALIZAÇÃO ---
-              AddressAutocompleteTextFormField(
-                // Configurações básicas
-                mapsApiKey: kGoogleApiKey,
-                controller: _locationController, // Usa o controller existente
-                componentCountry: 'br', // Filtra para o Brasil
-                language: 'pt-BR', // Define o idioma para português do Brasil
-                debounceTime: 400, // Tempo de espera antes de buscar (ms)
-
-                // Configurações da aparência
-                decoration: const InputDecoration(
-                  labelText: "Localização",
-                  hintText: "Digite o nome do local ou endereço",
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.search),
+              // --- CAMPO DE LOCALIZAÇÃO E LISTA DE SUGESTÕES ---
+              TextField(
+               controller: _locationController,
+               decoration: InputDecoration(
+                 labelText: "Localização", hintText: "Digite ou selecione um local", border: const OutlineInputBorder(),
+                 prefixIcon: const Icon(Icons.location_on_outlined),
+                 suffixIcon: _isPredictionLoading || _isDetailsLoading
+                   ? Container( width: 24, height: 24, padding: const EdgeInsets.all(12.0), child: const CircularProgressIndicator(strokeWidth: 2))
+                   : _locationController.text.isNotEmpty
+                     ? IconButton( icon: const Icon(Icons.clear), tooltip: "Limpar", onPressed: () => _locationController.clear())
+                     : const Icon(Icons.search),
+               ),
+             ),
+              if (showSuggestions)
+               Material(
+                 elevation: 4.0, borderRadius: BorderRadius.circular(8.0),
+                 child: ConstrainedBox(
+                   constraints: const BoxConstraints(maxHeight: 250),
+                   child: ListView.builder(
+                     shrinkWrap: true,
+                     itemCount: combinedListLength,
+                     itemBuilder: (context, index) {
+                       // Decide se mostra um item pré-definido ou da API
+                       if (index < _filteredPredefinedLocations.length) {
+                         // Item Pré-definido
+                         final location = _filteredPredefinedLocations[index];
+                         return ListTile(
+                           leading: const Icon(Icons.star_border, size: 20, color: Colors.orangeAccent),
+                           title: Text(location.name),
+                           subtitle: Text(location.description),
+                           dense: true,
+                           onTap: () => _handleSelection(location), // Chama a função genérica
+                         );
+                       } else {
+                         // Item da API
+                         final apiIndex = index - _filteredPredefinedLocations.length;
+                         // Proteção extra caso a lista mude durante o build
+                         if (apiIndex >= _apiPredictions.length) return const SizedBox.shrink();
+                         final prediction = _apiPredictions[apiIndex];
+                         return ListTile(
+                           leading: const Icon(Icons.pin_drop_outlined, size: 20),
+                           title: Text(prediction.structuredFormatting?.mainText ?? prediction.description ?? ''),
+                           subtitle: Text(prediction.structuredFormatting?.secondaryText ?? ''),
+                           dense: true,
+                           onTap: () => _handleSelection(prediction), // Chama a função genérica
+                         );
+                       }
+                     },
+                   ),
+                 ),
+               ),
+             // Preview opcional
+             if (_selectedGeoPoint != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text("Selecionado: ${_locationController.text}", style: TextStyle(color: Colors.grey[600])),
                 ),
-                style: Theme.of(context).textTheme.bodyLarge, // Usa o estilo de texto padrão
+             const SizedBox(height: 20),
 
-                // Callbacks
-                onSuggestionClick: (placeDetails) {
-                  // Chamado quando o usuário clica em uma sugestão E os detalhes foram buscados
-                  debugPrint('onSuggestionClick( placeDetails:$placeDetails )'); // Para depuração
-                  final lat = placeDetails.lat;
-                  final lng = placeDetails.lng;
-
-                  if (lat != null && lng != null) {
-                    setState(() {
-                      // O controller já é atualizado automaticamente pelo pacote
-                      _selectedGeoPoint = GeoPoint(lat, lng);
-                    });
-                  } else {
-                    setState(() { _selectedGeoPoint = null; });
-                     ScaffoldMessenger.of(context).showSnackBar(
-                         const SnackBar(content: Text('Não foi possível obter as coordenadas para este local.'))
-                     );
-                  }
-                  // Esconde o teclado após selecionar
-                  FocusScope.of(context).unfocus();
-                },
-                 onInitialSuggestionClick: (suggestion) {
-                   // Chamado IMEDIATAMENTE quando o usuário clica, antes de buscar detalhes.
-                   // Útil se você quiser mostrar um loading, por exemplo.
-                   debugPrint('Clique inicial: ${suggestion.description}');
-                 },
-                 onFinishedEditingWithNoSuggestion: (text) {
-                   // Chamado se o usuário sair do campo sem escolher uma sugestão válida
-                   debugPrint('Terminou de editar sem sugestão: $text');
-                   // Importante: Limpa a coordenada se o usuário não escolheu da lista
-                   setState(() { _selectedGeoPoint = null; });
-                 },
-                 // Você pode customizar a aparência dos itens da lista de sugestões aqui
-                 // buildItem: (Suggestion suggestion, int index) { ... },
-              ),
-              const SizedBox(height: 20),
-
+              // --- Data e Hora ---
               Row(
                 children: [
                   Expanded(
@@ -259,6 +397,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ],
               ),
               const SizedBox(height: 40),
+              // --- Botão Salvar ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -268,7 +407,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                   ),
-                  onPressed: _isLoading ? null : _saveEvent,
+                  onPressed: _isLoading ? null : _saveEvent, // Função definida
                   child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('PUBLICAR EVENTO', style: TextStyle(fontSize: 16)),
                 ),
               ),
