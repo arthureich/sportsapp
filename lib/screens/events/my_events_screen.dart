@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart';
 import '../events/event_detail_screen.dart';
@@ -9,8 +10,7 @@ class MyEventsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final EventService eventService = EventService();
-    // O ID do usuário logado (simulado)
-    const String currentUserId = 'usr01';
+    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       appBar: AppBar(
@@ -22,37 +22,42 @@ class MyEventsScreen extends StatelessWidget {
       backgroundColor: Colors.grey.shade100,
       // Usamos um StreamBuilder para ouvir as atualizações do Firestore em tempo real
       body: StreamBuilder<List<Event>>(
-        stream: eventService.getEvents(),
+        stream: eventService.getEvents(), // Continua buscando todos os eventos
         builder: (context, snapshot) {
-          // Enquanto os dados estão a carregar, mostra um indicador de progresso
+          // --- Tratamento de Estados (sem alterações) ---
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          // Se ocorrer um erro na conexão
           if (snapshot.hasError) {
             return const Center(child: Text('Erro ao carregar os eventos.'));
           }
-          // Se não houver dados
+          // 3. Verifica se o usuário está logado ANTES de filtrar
+          if (currentUserId == null) {
+             return const Center(child: Text('Faça login para ver seus eventos.'));
+          }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return _buildEmptyState();
+            return _buildEmptyState(); // Mostra estado vazio se não houver eventos no geral
           }
 
-          // Filtra os eventos para mostrar apenas os do usuário logado
+          // 4. Filtra os eventos usando o ID REAL do usuário logado
           final List<Event> myEvents = snapshot.data!
               .where((event) =>
-                  event.organizer.id == currentUserId ||
-                  event.participants.any((p) => p.id == currentUserId))
+                  event.organizer.id == currentUserId || // Verifica se é organizador
+                  event.participants.any((p) => p.id == currentUserId)) // Verifica se é participante
               .toList();
 
+          // Se após o filtro a lista estiver vazia, mostra estado vazio
           if (myEvents.isEmpty) {
             return _buildEmptyState();
           }
 
+          // --- Construção da Lista (sem alterações) ---
           return ListView.builder(
             padding: const EdgeInsets.all(16.0),
             itemCount: myEvents.length,
             itemBuilder: (context, index) {
               final event = myEvents[index];
+              // Usar o EventCard existente
               return EventCard(event: event);
             },
           );
@@ -85,7 +90,6 @@ class MyEventsScreen extends StatelessWidget {
   }
 }
 
-// O widget EventCard permanece o mesmo
 class EventCard extends StatelessWidget {
   final Event event;
 
@@ -131,7 +135,7 @@ class EventCard extends StatelessWidget {
                   const Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey),
                   const SizedBox(width: 8),
                   Text(
-                    "${event.dateTime.day}/${event.dateTime.month}/${event.dateTime.year}",
+                    "${event.dateTime.day.toString().padLeft(2, '0')}/${event.dateTime.month.toString().padLeft(2, '0')}/${event.dateTime.year}",
                     style: const TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(width: 16),

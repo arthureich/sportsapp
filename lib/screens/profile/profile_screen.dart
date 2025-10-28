@@ -4,6 +4,10 @@ import '../../api/user_service.dart';
 import '../../models/user_model.dart'; 
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
+import '../../api/event_service.dart'; 
+import '../../models/event_model.dart'; 
+import '../events/my_events_screen.dart'; 
+import '../events/event_detail_screen.dart';
 
 enum ProfileMenuOption { editProfile, settings, faq, logout }
 
@@ -16,6 +20,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
+  final EventService _eventService = EventService();
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; // Pega o ID do usuário logado
 
   void _onMenuOptionSelected(BuildContext context, ProfileMenuOption option) {
@@ -45,14 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
         break;
       case ProfileMenuOption.logout:
-         // 3. Usar FirebaseAuth para logout
          FirebaseAuth.instance.signOut();
-         // O StreamBuilder no main.dart cuidará de redirecionar para LoginScreen
-         // Não precisamos mais do pushAndRemoveUntil aqui se o main.dart estiver correto.
-         // Navigator.of(context).pushAndRemoveUntil(
-         //   MaterialPageRoute(builder: (context) => const LoginScreen()),
-         //   (Route<dynamic> route) => false,
-         // );
         break;
     }
   }
@@ -142,10 +140,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ];
           },
-          body: const TabBarView(
+          body: TabBarView(
             children: [
-              Center(child: Text("Lista de eventos participados aqui")),
-              Center(child: Text("Grid de conquistas aqui")),
+              _buildMyEventsList(), 
+              const Center(child: Text("Grid de conquistas aqui")),
             ],
           ),
         ),
@@ -215,10 +213,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
        ],
      );
    }
-}
 
-// Widget auxiliar StatItem (sem alterações)
-//
+Widget _buildMyEventsList() {
+    // Verifica se o usuário está logado
+    if (_currentUserId == null) {
+      return const Center(child: Text('Faça login para ver seus eventos.'));
+    }
+
+    return StreamBuilder<List<Event>>(
+      stream: _eventService.getEvents(), // Busca todos os eventos
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Erro ao carregar eventos.'));
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('Nenhum evento encontrado.'));
+        }
+
+        // Filtra os eventos para o usuário atual
+        final List<Event> myEvents = snapshot.data!
+            .where((event) =>
+                event.organizer.id == _currentUserId ||
+                event.participants.any((p) => p.id == _currentUserId))
+            .toList();
+
+        if (myEvents.isEmpty) {
+          return const Center(
+            child: Text(
+              'Você ainda não participa ou organiza nenhum evento.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+          );
+        }
+
+        // Reutiliza o EventCard da my_events_screen
+        return ListView.builder(
+          padding: const EdgeInsets.all(16.0), // Adiciona padding
+          itemCount: myEvents.length,
+          itemBuilder: (context, index) {
+            final event = myEvents[index];
+            return EventCard(event: event); // Reutiliza o card
+          },
+        );
+      },
+    );
+ }
+}
  class StatItem extends StatelessWidget {
    final String count;
    final String label;
@@ -235,8 +279,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
    }
  }
 
-
-// Classe auxiliar para fixar a TabBar
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverAppBarDelegate(this._tabBar);
 
