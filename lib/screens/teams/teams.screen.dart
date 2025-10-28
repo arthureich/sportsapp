@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../api/team_service.dart';
 import '../../models/team_model.dart';
 import 'create_team_screen.dart';
+import 'team_detail_screen.dart';
 
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
@@ -13,6 +15,7 @@ class TeamsScreen extends StatefulWidget {
 class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 final TeamService _teamService = TeamService(); // Instância do serviço
+final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
@@ -115,29 +118,53 @@ final TeamService _teamService = TeamService(); // Instância do serviço
         if (snapshot.hasError) {
           return const Center(child: Text('Erro ao carregar as equipes.'));
         }
+        // Verifica login ANTES de filtrar
+        if (_currentUserId == null && isMyTeams) {
+           return Center(child: Text('Faça login para ver suas equipes.', style: TextStyle(color: Colors.grey[600])));
+        }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('Nenhuma equipe encontrada.'));
+          return Center(child: Text('Nenhuma equipe encontrada.', style: TextStyle(color: Colors.grey[600])));
         }
 
         final allTeams = snapshot.data!;
-        final filteredTeams = allTeams.where((team) {
-          return isMyTeams ? !team.isPublic : team.isPublic;
-        }).toList();
+        List<Team> filteredTeams;
 
-        return _buildTeamList(filteredTeams);
+        if (isMyTeams) {
+          // Filtra onde o ID do usuário está na lista de membros
+          filteredTeams = allTeams.where((team) => team.memberIds.contains(_currentUserId)).toList();
+        } else {
+          // Filtra equipes públicas que o usuário NÃO participa (para não duplicar)
+           filteredTeams = allTeams.where((team) => team.isPublic && !team.memberIds.contains(_currentUserId)).toList();
+           // Ou apenas as públicas, se quiser mostrar todas:
+           // filteredTeams = allTeams.where((team) => team.isPublic).toList();
+        }
+
+        return _buildTeamList(filteredTeams, isMyTeams: isMyTeams);
       },
     );
   }
   
-  Widget _buildTeamList(List<Team> teams) {
+Widget _buildTeamList(List<Team> teams, {required bool isMyTeams}) {
     if (teams.isEmpty) {
-        return Center(child: Text( 'Nenhuma equipe encontrada nesta categoria.', style: TextStyle(color: Colors.grey[600])));
+        final message = isMyTeams
+            ? 'Você ainda não faz parte de nenhuma equipe.'
+            : 'Nenhuma equipe pública encontrada para explorar.';
+        return Center(child: Text(message, style: TextStyle(color: Colors.grey[600])));
     }
     return ListView.builder(
       padding: const EdgeInsets.only(top: 8),
       itemCount: teams.length,
       itemBuilder: (context, index) {
-        return TeamCard(team: teams[index]);
+        // --- ADICIONA NAVEGAÇÃO AO CLICAR ---
+        return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => TeamDetailScreen(teamId: teams[index].id)),
+              );
+            },
+            child: TeamCard(team: teams[index]),
+        );
       },
     );
   }
@@ -154,6 +181,7 @@ class TeamCard extends StatelessWidget {
       case 'basquete': return Icons.sports_basketball;
       case 'vôlei': return Icons.sports_volleyball;
       case 'corrida': return Icons.directions_run;
+      case 'tênis': return Icons.sports_tennis;
       default: return Icons.sports;
     }
   }
@@ -278,22 +306,22 @@ class _AnimatedTabBarState extends State<AnimatedTabBar> {
 
 // Widget para o texto da aba
 class TabButton extends StatelessWidget {
-  final String title;
-  final bool isSelected;
-  final VoidCallback onTap;
-  const TabButton({super.key, required this.title, required this.isSelected, required this.onTap});
+   final String title;
+   final bool isSelected;
+   final VoidCallback onTap;
+   const TabButton({super.key, required this.title, required this.isSelected, required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.green[700] : Colors.grey[600],
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
+   @override
+   Widget build(BuildContext context) {
+     return GestureDetector(
+       onTap: onTap,
+       child: Text(
+         title,
+         style: TextStyle(
+           color: isSelected ? Colors.green[700] : Colors.grey[600],
+           fontWeight: FontWeight.bold,
+         ),
+       ),
+     );
+   }
+ }

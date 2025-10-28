@@ -47,7 +47,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     super.initState();
     _places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
     _generateSessionToken();
-    _filteredPredefinedLocations = predefinedLocationsCascavel; // 4. Inicializa mostrando todos
+    _filteredPredefinedLocations = [];
    _locationController.addListener(_onSearchChanged);
   }
 
@@ -283,13 +283,25 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final bool showSuggestions = (_filteredPredefinedLocations.isNotEmpty || _apiPredictions.isNotEmpty) && !_isDetailsLoading;
     return Scaffold(
       appBar: AppBar(title: const Text('Criar Novo Evento'), centerTitle: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          // Se o foco não está no campo de localização, esconde sugestões
+          FocusScope.of(context).unfocus();
+          if (_filteredPredefinedLocations.isNotEmpty || _apiPredictions.isNotEmpty) {
+            setState(() {
+              _filteredPredefinedLocations = [];
+              _apiPredictions = [];
+            });
+          }
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(labelText: 'Título do Evento', hintText: 'Ex: Futebol de Sábado', border: OutlineInputBorder()),
@@ -315,17 +327,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
               // --- CAMPO DE LOCALIZAÇÃO E LISTA DE SUGESTÕES ---
               TextField(
-               controller: _locationController,
-               decoration: InputDecoration(
-                 labelText: "Localização", hintText: "Digite ou selecione um local", border: const OutlineInputBorder(),
-                 prefixIcon: const Icon(Icons.location_on_outlined),
-                 suffixIcon: _isPredictionLoading || _isDetailsLoading
-                   ? Container( width: 24, height: 24, padding: const EdgeInsets.all(12.0), child: const CircularProgressIndicator(strokeWidth: 2))
-                   : _locationController.text.isNotEmpty
-                     ? IconButton( icon: const Icon(Icons.clear), tooltip: "Limpar", onPressed: () => _locationController.clear())
-                     : const Icon(Icons.search),
-               ),
-             ),
+                  controller: _locationController,
+                  decoration: InputDecoration(
+                    labelText: "Localização", hintText: "Digite ou selecione um local", border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.location_on_outlined),
+                    suffixIcon: _isPredictionLoading || _isDetailsLoading
+                      ? Container( width: 24, height: 24, padding: const EdgeInsets.all(12.0), child: const CircularProgressIndicator(strokeWidth: 2))
+                      : _locationController.text.isNotEmpty
+                        ? IconButton( icon: const Icon(Icons.clear), tooltip: "Limpar", onPressed: () => _locationController.clear())
+                        : const Icon(Icons.search),
+                  ),
+                  onTap: () {
+                    // Não recolhe sugestões ao clicar no campo de localização
+                  },
+              ),
               if (showSuggestions)
                Material(
                  elevation: 4.0, borderRadius: BorderRadius.circular(8.0),
@@ -415,6 +430,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }

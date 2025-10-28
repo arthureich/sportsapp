@@ -9,6 +9,7 @@ class Team {
   final int currentMembers;
   final int maxMembers;
   final bool isPublic;
+  final List<String> memberIds;
   // Poderia adicionar uma lista de IDs de membros aqui no futuro
   // final List<String> memberIds; 
 
@@ -21,6 +22,7 @@ class Team {
     required this.currentMembers,
     required this.maxMembers,
     required this.isPublic,
+    required this.memberIds,
   });
 
   // Converte o objeto Team para um mapa que pode ser guardado no Firestore
@@ -29,14 +31,19 @@ class Team {
         'sport': sport,
         'crestUrl': crestUrl,
         'description': description,
-        'currentMembers': currentMembers,
         'maxMembers': maxMembers,
         'isPublic': isPublic,
+        'memberIds': memberIds,
       };
 
   // Cria uma instância de Team a partir de um documento do Firestore
   factory Team.fromSnapshot(DocumentSnapshot snapshot) {
     final data = snapshot.data() as Map<String, dynamic>? ?? {};
+
+    List<String> members = [];
+    if (data['memberIds'] is List) {
+      members = List<String>.from(data['memberIds']);
+    }
 
     return Team(
       id: snapshot.id,
@@ -44,9 +51,10 @@ class Team {
       sport: data['sport'] ?? 'Esporte não definido',
       crestUrl: data['crestUrl'] ?? '',
       description: data['description'] ?? '',
-      currentMembers: data['currentMembers'] ?? 1,
+      currentMembers: members.length, 
       maxMembers: data['maxMembers'] ?? 0,
       isPublic: data['isPublic'] ?? true,
+      memberIds: members, 
     );
   }
 }

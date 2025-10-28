@@ -8,6 +8,18 @@ class UserService {
       FirebaseFirestore.instance.collection('usuarios');
 
   // Busca os dados de um usuário específico pelo ID
+Future<List<UserModel>> getUsersData(List<String> userIds) async { // <-- DEFINIÇÃO ESTÁ AQUI
+    if (userIds.isEmpty) {
+      return [];
+    }
+    try { // Adicionado try-catch para robustez
+        final userSnapshots = await _usersCollection.where(FieldPath.documentId, whereIn: userIds).get();
+        return userSnapshots.docs.map((doc) => UserModel.fromSnapshot(doc)).toList();
+    } catch (e) {
+        debugPrint("Erro ao buscar múltiplos usuários: $e");
+        return []; // Retorna lista vazia em caso de erro
+    }
+  }
   Future<UserModel?> getUser(String userId) async {
     try {
       final userDoc = await _usersCollection.doc(userId).get();
@@ -46,17 +58,4 @@ class UserService {
       rethrow; // Re-lança o erro para ser tratado na UI
     }
   }
-
-    Future<List<UserModel>> getAllUsers() async {
-    try {
-      final querySnapshot = await _usersCollection.get();
-      return querySnapshot.docs
-          .map((doc) => UserModel.fromSnapshot(doc))
-          .toList();
-    } catch (e) {
-      debugPrint("Erro ao buscar todos os usuários: $e");
-      return [];
-    }
-  }
-  // Você pode adicionar mais métodos aqui conforme necessário (ex: buscar todos os usuários, etc.)
 }

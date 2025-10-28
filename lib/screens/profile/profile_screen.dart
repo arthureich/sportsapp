@@ -7,7 +7,6 @@ import 'edit_profile_screen.dart';
 import '../../api/event_service.dart'; 
 import '../../models/event_model.dart'; 
 import '../events/my_events_screen.dart'; 
-import '../events/event_detail_screen.dart';
 
 enum ProfileMenuOption { editProfile, settings, faq, logout }
 

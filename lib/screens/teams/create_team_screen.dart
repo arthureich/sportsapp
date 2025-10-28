@@ -51,10 +51,11 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
       name: _nameController.text,
       description: _descriptionController.text,
       sport: _selectedSport!,
-      crestUrl: '', // Pode adicionar a lógica de upload de imagem aqui mais tarde
-      currentMembers: 1, // Começa com 1 membro (o criador)
+      crestUrl: '',
+      currentMembers: 1, 
       maxMembers: _maxMembers.toInt(),
       isPublic: _isPublic,
+      memberIds: [currentUser.uid], // <-- ADICIONA O CRIADOR COMO PRIMEIRO MEMBRO
     );
 
     try {
