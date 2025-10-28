@@ -1,19 +1,37 @@
 import 'package:flutter/material.dart';
-import '../auth/login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart'; 
+import '../../api/user_service.dart'; 
+import '../../models/user_model.dart'; 
 import 'settings_screen.dart';
+import 'edit_profile_screen.dart';
 
 enum ProfileMenuOption { editProfile, settings, faq, logout }
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final UserService _userService = UserService();
+  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; // Pega o ID do usuário logado
 
   void _onMenuOptionSelected(BuildContext context, ProfileMenuOption option) {
     switch (option) {
       case ProfileMenuOption.editProfile:
-        // Lógica para navegar para a tela de edição de perfil
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navegando para Editar Perfil...')),
-        );
+         // 2. Navegar para EditProfileScreen (passando o ID se necessário, mas podemos pegar lá)
+         if (_currentUserId != null) {
+           Navigator.push(
+             context,
+             MaterialPageRoute(builder: (context) => EditProfileScreen(userId: _currentUserId)),
+           );
+         } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Erro: Usuário não encontrado.')),
+            );
+         }
         break;
       case ProfileMenuOption.settings:
         Navigator.push(
@@ -22,16 +40,19 @@ class ProfileScreen extends StatelessWidget {
         );
         break;
       case ProfileMenuOption.faq:
-        // Lógica para navegar para a tela de FAQ
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navegando para FAQ...')),
+          const SnackBar(content: Text('Navegando para FAQ... (Não implementado)')),
         );
         break;
       case ProfileMenuOption.logout:
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (Route<dynamic> route) => false, // Remove todas as rotas anteriores
-        );
+         // 3. Usar FirebaseAuth para logout
+         FirebaseAuth.instance.signOut();
+         // O StreamBuilder no main.dart cuidará de redirecionar para LoginScreen
+         // Não precisamos mais do pushAndRemoveUntil aqui se o main.dart estiver correto.
+         // Navigator.of(context).pushAndRemoveUntil(
+         //   MaterialPageRoute(builder: (context) => const LoginScreen()),
+         //   (Route<dynamic> route) => false,
+         // );
         break;
     }
   }
@@ -85,7 +106,40 @@ class ProfileScreen extends StatelessWidget {
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              SliverToBoxAdapter(child: _buildProfileHeader()),
+              SliverToBoxAdapter(
+                 child: StreamBuilder<UserModel?>(
+                   stream: _currentUserId != null ? _userService.getUserStream(_currentUserId) : null,
+                   builder: (context, snapshot) {
+                     if (snapshot.connectionState == ConnectionState.waiting && _currentUserId != null) {
+                       return const Center(child: Padding(padding: EdgeInsets.all(32.0), child: CircularProgressIndicator()));
+                     }
+                     if (snapshot.hasError) {
+                       return const Center(child: Text('Erro ao carregar perfil.'));
+                     }
+                     if (!snapshot.hasData || snapshot.data == null) {
+                       // Se não tem usuário ou ID é nulo, mostra um placeholder ou mensagem
+                       return _buildProfileHeaderPlaceholder();
+                     }
+
+                     final user = snapshot.data!; // Temos os dados do usuário!
+                     return _buildProfileHeader(user); // Passa o UserModel para o header
+                   },
+                 ),
+               ),
+              SliverPersistentHeader( // Mantém a TabBar fixa abaixo do header
+                delegate: _SliverAppBarDelegate(
+                  const TabBar(
+                    labelColor: Colors.orangeAccent,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: Colors.orangeAccent,
+                    tabs: [
+                      Tab(icon: Icon(Icons.event), text: 'Meus Eventos'),
+                      Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
+                    ],
+                  ),
+                ),
+                pinned: true,
+              ),
             ];
           },
           body: const TabBarView(
@@ -99,62 +153,112 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Widget para o cabeçalho do perfil
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(UserModel user) {
     return Column(
       children: [
         const SizedBox(height: 20),
-        const CircleAvatar(
+        CircleAvatar(
           radius: 50,
-          backgroundImage: NetworkImage('https://cdn2.iconfinder.com/data/icons/flatfaces-everyday-people-square/128/sports_shirt_boy_man_face_avatar-512.png'),
+           backgroundImage: NetworkImage(user.fotoUrl.isNotEmpty
+               ? user.fotoUrl
+               : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'), // Placeholder
+           onBackgroundImageError: (exception, stackTrace) {}, // Ignora erro de imagem
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Arthur Eich',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        Text(
+          user.nome, // Dado dinâmico
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
-        const Text(
-          'Atleta de futebol e corrida',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+        Text(
+          user.bio.isNotEmpty ? user.bio : 'Sem bio definida', // Dado dinâmico
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 20),
-        // Linha de estatísticas
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            StatItem(count: '12', label: 'Eventos'),
-            StatItem(count: '5', label: 'Conquistas'),
-            StatItem(count: '4.8', label: 'Avaliação'),
+            const StatItem(count: '0', label: 'Eventos'), // Placeholder
+            const StatItem(count: '0', label: 'Conquistas'), // Placeholder
+             // Exibe o score do usuário, formatado
+            StatItem(count: user.scoreEsportividade.toStringAsFixed(1), label: 'Avaliação'),
           ],
         ),
         const SizedBox(height: 20),
-        const TabBar(
-          labelColor: Colors.orangeAccent,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.orangeAccent,
-          tabs: [
-            Tab(icon: Icon(Icons.event), text: 'Meus Eventos'),
-            Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
-          ],
-        ),
+         // A TabBar foi movida para SliverPersistentHeader
+         // const TabBar(...)
       ],
     );
   }
+
+   // Widget placeholder para quando os dados não carregaram
+   Widget _buildProfileHeaderPlaceholder() {
+     return const Column(
+       children: [
+         SizedBox(height: 20),
+         CircleAvatar(radius: 50, backgroundColor: Colors.grey),
+         SizedBox(height: 12),
+         Text('Carregando...', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+         Text('...', style: TextStyle(fontSize: 16, color: Colors.grey)),
+         SizedBox(height: 20),
+         Row(
+           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+           children: [
+             StatItem(count: '-', label: 'Eventos'),
+             StatItem(count: '-', label: 'Conquistas'),
+             StatItem(count: '-', label: 'Avaliação'),
+           ],
+         ),
+         SizedBox(height: 20),
+       ],
+     );
+   }
 }
 
-// Widget auxiliar para item de estatística
-class StatItem extends StatelessWidget {
-  final String count;
-  final String label;
-  const StatItem({super.key, required this.count, required this.label});
+// Widget auxiliar StatItem (sem alterações)
+//
+ class StatItem extends StatelessWidget {
+   final String count;
+   final String label;
+   const StatItem({super.key, required this.count, required this.label});
+
+   @override
+   Widget build(BuildContext context) {
+     return Column(
+       children: [
+         Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+         Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+       ],
+     );
+   }
+ }
+
+
+// Classe auxiliar para fixar a TabBar
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverAppBarDelegate(this._tabBar);
+
+  final TabBar _tabBar;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-      ],
+  double get minExtent => _tabBar.preferredSize.height;
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor, // Cor de fundo para a TabBar
+      child: _tabBar,
     );
   }
+
+  @override
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
+    return false;
+  }
 }
+

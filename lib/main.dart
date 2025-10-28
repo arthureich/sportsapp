@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/home/home_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
+import 'screens/auth/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +21,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Esporte na Vizinhança',
+      title: 'Joga-Mais',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -52,7 +54,21 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const NewHomeScreen(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(), // Ouve o estado de autenticação
+        builder: (context, snapshot) {
+          // Enquanto verifica o estado
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(body: Center(child: CircularProgressIndicator())); // Ou uma tela de splash
+          }
+          // Se o usuário está logado (snapshot tem dados)
+          if (snapshot.hasData) {
+            return const NewHomeScreen(); // Vai para a tela principal
+          }
+          // Se o usuário não está logado
+          return const LoginScreen(); // Vai para a tela de login
+        },
+      ),
     );
   }
 }

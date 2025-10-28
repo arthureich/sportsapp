@@ -11,19 +11,22 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // PASSO 2: Declarar os controllers e a chave do formulário
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false; // Para mostrar um indicador de carregamento
+  final _bioController = TextEditingController();
+  final List<String> _selectedSports = [];
+  bool _isLoading = false;
 
-  // É importante liberar os controllers da memória quando a tela é destruída
+  final List<String> _availableSports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Ciclismo', 'Natação', 'Outro'];
+
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -33,9 +36,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-
+    if (_selectedSports.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecione pelo menos um esporte de interesse.')),
+      );
+      return;
+    }
     setState(() {
-      _isLoading = true; // Inicia o loading
+      _isLoading = true; 
     });
 
     try {
@@ -53,13 +61,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         await FirebaseFirestore.instance.collection('usuarios').doc(userId).set({
           'nome': _nameController.text.trim(),
           'email': _emailController.text.trim(),
+          'bio': _bioController.text.trim(),
+          'esportesInteresse': _selectedSports,
           'fotoUrl': '', // Deixar em branco ou colocar uma URL de avatar padrão
-          'bio': '',
-          'esportesInteresse': [],
           'scoreEsportividade': 5.0, // Um score inicial para o novo usuário
           'createdAt': FieldValue.serverTimestamp(), // Adiciona a data de criação
         });
-
+        await userCredential.user?.updateDisplayName(_nameController.text.trim());
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Cadastro realizado! Faça o login.')),
@@ -94,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Form( // Associar a chave ao formulário
+          child: Form( 
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -107,13 +115,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'É rápido e fácil!',
+                  'Complete seu perfil para começar!',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
 
-                // --- Campos de Formulário (com controllers e validação) ---
                 TextFormField(
                   controller: _nameController,
                   decoration: _buildInputDecoration(label: 'Nome Completo', icon: Icons.person_outline),
@@ -146,10 +153,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                // --- Botão de Registro ---
+                TextFormField(
+                   controller: _bioController,
+                   decoration: _buildInputDecoration(
+                     label: 'Sua Bio (Opcional)',
+                     icon: Icons.article_outlined,
+                     hint: 'Ex: Atleta amador, adoro futebol aos sábados!'
+                   ),
+                   maxLines: 2,
+                 ),
+                 const SizedBox(height: 20),
+
+                 Text('Esportes de Interesse:', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)),
+                 const SizedBox(height: 8),
+                 Wrap(
+                   spacing: 8.0, // Espaço horizontal entre os chips
+                   runSpacing: 4.0, // Espaço vertical entre as linhas de chips
+                   children: _availableSports.map((sport) {
+                     final isSelected = _selectedSports.contains(sport);
+                     return FilterChip(
+                       label: Text(sport),
+                       selected: isSelected,
+                       onSelected: (selected) {
+                         setState(() {
+                           if (selected) {
+                             _selectedSports.add(sport);
+                           } else {
+                             _selectedSports.remove(sport);
+                           }
+                         });
+                       },
+                       selectedColor: Colors.green.shade100,
+                       checkmarkColor: Colors.green.shade800,
+                     );
+                   }).toList(),
+                 ),
+                 // --- FIM NOVA SELEÇÃO DE ESPORTES ---
+
+                const SizedBox(height: 30),
+
                 ElevatedButton(
                   style: _buildButtonStyle(),
-                  onPressed: _isLoading ? null : _registerUser, // Desabilita o botão durante o loading
+                  onPressed: _isLoading ? null : _registerUser,
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0)
                       : const Text('CADASTRAR'),
@@ -177,8 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Os métodos de estilo continuam os mesmos
-  InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
+  InputDecoration _buildInputDecoration({required String label, required IconData icon, String? hint}) {
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon, color: Colors.grey),
