@@ -8,9 +8,8 @@ buildscript {
 
     dependencies {
         // Define a versão do plugin de build do Android
-        classpath 'com.android.tools.build:gradle:7.4.2'
-        // Aponta para o plugin do Kotlin, usando a versão que definimos acima
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.android.tools.build:gradle:8.6.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24"
     }
 }
 
@@ -47,7 +46,7 @@ tasks.register("clean", Delete) {
 subprojects {
     project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = "17"
         }
     }
 }
