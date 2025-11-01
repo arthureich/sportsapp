@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart'; 
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 
 T _getOrDefault<T>(Map<String, dynamic> data, String key, T defaultValue) {
   try {
@@ -96,6 +97,7 @@ class Event {
         'organizer': organizer.toJson(),
         'participants': participants.map((p) => p.toJson()).toList(),
         'maxParticipants': maxParticipants,
+        'geo': GeoFirePoint(location.coordinates).data,
       };
 
   factory Event.fromSnapshot(DocumentSnapshot snapshot) {
