@@ -44,7 +44,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           final team = snapshot.data!;
           // Atualiza o estado local sempre que o stream trouxer novos dados
           _isCurrentUserMember = _currentUserId != null && team.memberIds.contains(_currentUserId);
-          final bool isFull = team.currentMembers >= team.maxMembers;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
