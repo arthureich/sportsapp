@@ -3,6 +3,7 @@ plugins {
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
     id "com.google.gms.google-services"
+    id 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
 }
 
 def localProperties = new Properties()
@@ -22,20 +23,6 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName')
 if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
-
-/*Properties properties = new Properties()
-File envFile = rootProject.file('../../api.env') 
-if (envFile.exists()) {
-    properties.load(new FileInputStream(envFile))
-} else {
-    File localPropertiesFiles = rootProject.file('local.properties')
-    if (localPropertiesFiles.exists()) {
-        properties.load(new FileInputStream(localPropertiesFiles))
-    }
-}
-
-// 2. Define um valor padrão caso a chave não seja encontrada
-def mapsApiKey = properties.getProperty('kGoogleApiKey') ?: "CHAVE_NAO_ENCONTRADA"*/
 
 android {
     namespace = "com.example.flutter_application_1"
@@ -60,9 +47,6 @@ android {
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
         multiDexEnabled true
-        //manifestPlaceholders = [
-        //    'MAPS_API_KEY': mapsApiKey
-       // ]
     }
 
     buildTypes {
