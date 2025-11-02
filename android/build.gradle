@@ -1,15 +1,14 @@
 buildscript {
-    // Define a versão do Kotlin que será usada em todo o projeto Android
-    ext.kotlin_version = '1.8.22'
+    ext.kotlin_version = '1.9.24'
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
-        // Define a versão do plugin de build do Android
         classpath 'com.android.tools.build:gradle:8.6.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24"
+        classpath 'com.google.gms:google-services:4.4.1'
     }
 }
 

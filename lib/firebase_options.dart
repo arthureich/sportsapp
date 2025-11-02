@@ -41,7 +41,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyC6Gs81C8skF1I6eBtlGcNZxhAqMdUGxlY',
+    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
     appId: '1:551468081879:web:a6ac2e39df34a4af3a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBYOPVda9NLMZtyQIDpsC14lfqO42BiqQQ',
+    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
     appId: '1:551468081879:ios:eb1eb3113422b0cc3a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -69,7 +69,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBYOPVda9NLMZtyQIDpsC14lfqO42BiqQQ',
+    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
     appId: '1:551468081879:ios:eb1eb3113422b0cc3a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -79,7 +79,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyC6Gs81C8skF1I6eBtlGcNZxhAqMdUGxlY',
+    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
     appId: '1:551468081879:web:2db5dee9aa7adc563a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
