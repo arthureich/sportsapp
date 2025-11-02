@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
-import '../events/my_events_screen.dart'; 
+import '../events/my_events_screen.dart';
+import '../events/event_detail_screen.dart';
 import '../../api/event_service.dart'; 
 import '../../api/user_service.dart'; 
+import '../../api/rating_service.dart';
+import '../../models/rating_model.dart';
 import '../../models/user_model.dart'; 
 import '../../models/event_model.dart'; 
 import '../../models/achievement_model.dart';
@@ -21,12 +25,14 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
   final EventService _eventService = EventService();
-  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; // Pega o ID do usuário logado
+  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; 
+
+  final RatingService _ratingService = RatingService();
+  bool _isRating = false;
 
   void _onMenuOptionSelected(BuildContext context, ProfileMenuOption option) {
     switch (option) {
       case ProfileMenuOption.editProfile:
-         // 2. Navegar para EditProfileScreen (passando o ID se necessário, mas podemos pegar lá)
          if (_currentUserId != null) {
            Navigator.push(
              context,
@@ -58,7 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2, 
+      length: 3, 
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Meu Perfil'),
@@ -121,13 +127,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                      final user = snapshot.data!;
                      return Column(
                        children: [
-                         _buildProfileHeader(user), // Constrói o header
-                         TabBar( // A TabBar fica *dentro* do SliverToBoxAdapter
+                         _buildProfileHeader(user), 
+                         TabBar( 
                            labelColor: Colors.orangeAccent,
                            unselectedLabelColor: Colors.grey,
                            indicatorColor: Colors.orangeAccent,
                            tabs: const [
                              Tab(icon: Icon(Icons.event), text: 'Meus Eventos'),
+                             Tab(icon: Icon(Icons.history), text: 'Histórico'),
                              Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
                            ],
                          ),
@@ -144,8 +151,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!snapshot.hasData || snapshot.data == null) {
                  return TabBarView(
                   children: [
-                    Center(child: Text('Carregando eventos...')),
-                    Center(child: Text('Carregando conquistas...')),
+                    Center(child: CircularProgressIndicator()),
+                    Center(child: CircularProgressIndicator()),
+                    Center(child: CircularProgressIndicator()),
                   ],
                 );
               }
@@ -153,8 +161,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               
               return TabBarView(
                 children: [
-                  _buildMyEventsList(), 
-                  _buildAchievementsTab(user), 
+                  _buildMyEventsList(isUpcoming: true),  
+                  _buildMyEventsList(isUpcoming: false), 
+                  _buildAchievementsTab(user),
                 ],
               );
             }
@@ -191,9 +200,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            const StatItem(count: '0', label: 'Eventos'), // Placeholder
-            const StatItem(count: '0', label: 'Conquistas'), // Placeholder
-             // Exibe o score do usuário, formatado
+            const StatItem(count: '0', label: 'Eventos'), 
+            const StatItem(count: '0', label: 'Conquistas'), 
             StatItem(count: user.scoreEsportividade.toStringAsFixed(1), label: 'Avaliação'),
           ],
         ),
@@ -226,14 +234,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
      );
    }
 
-Widget _buildMyEventsList() {
-    // Verifica se o usuário está logado
+Widget _buildMyEventsList({required bool isUpcoming}) {
     if (_currentUserId == null) {
       return const Center(child: Text('Faça login para ver seus eventos.'));
     }
 
     return StreamBuilder<List<Event>>(
-      stream: _eventService.getEvents(), // Busca todos os eventos
+      stream: _eventService.getEvents(), 
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -245,19 +252,32 @@ Widget _buildMyEventsList() {
           return const Center(child: Text('Nenhum evento encontrado.'));
         }
 
-        // Filtra os eventos para o usuário atual
         final List<Event> myEvents = snapshot.data!
             .where((event) =>
                 event.organizer.id == _currentUserId ||
                 event.participants.any((p) => p.id == _currentUserId))
             .toList();
 
-        if (myEvents.isEmpty) {
-          return const Center(
+        final now = DateTime.now();
+        final List<Event> filteredEvents;
+
+        if (isUpcoming) {
+          filteredEvents = myEvents.where((e) => e.dateTime.isAfter(now)).toList();
+          filteredEvents.sort((a, b) => a.dateTime.compareTo(b.dateTime)); 
+        } else {
+          filteredEvents = myEvents.where((e) => e.dateTime.isBefore(now)).toList();
+          filteredEvents.sort((a, b) => b.dateTime.compareTo(a.dateTime)); 
+        }
+
+        if (filteredEvents.isEmpty) {
+          final message = isUpcoming 
+            ? 'Você não tem eventos futuros.' 
+            : 'Você ainda não participou de nenhum evento.';
+          return Center(
             child: Text(
-              'Você ainda não participa ou organiza nenhum evento.',
+              message,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+              style: const TextStyle(color: Colors.grey),
             ),
           );
         }
@@ -267,16 +287,108 @@ Widget _buildMyEventsList() {
           itemCount: myEvents.length,
           itemBuilder: (context, index) {
             final event = myEvents[index];
-            return EventCard(event: event, isPast: false, onRatePressed: (){},); // Reutiliza o card
+            return _ProfileEventCard(
+              event: event, 
+              isPast: !isUpcoming, // Se NÃO é 'upcoming', é 'past'
+              onRatePressed: () {
+                _showRatingModal(event);
+              },
+            );
           },
         );
       },
     );
  }
+ void _showRatingModal(Event event) {
+    final participantsToRate = event.participants
+        .where((p) => p.id != _currentUserId)
+        .toList();
+
+    if (participantsToRate.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Não há outros participantes para avaliar neste evento.'),
+      ));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder( 
+          builder: (modalContext, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              height: 400, 
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Avalie os participantes', style: Theme.of(context).textTheme.headlineSmall),
+                  Text(event.title, style: const TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: _isRating 
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView.builder(
+                        itemCount: participantsToRate.length,
+                        itemBuilder: (context, index) {
+                          final participant = participantsToRate[index];
+                          return _RatingParticipantTile(
+                            participant: participant,
+                            ratingService: _ratingService,
+                            eventId: event.id,
+                            raterUserId: _currentUserId!,
+                            onRatingSubmited: (ratedUserId, newScore) {
+                              _handleRatingLogic(ratedUserId);
+                              setModalState(() {});
+                            },
+                          );
+                        },
+                      ),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Future<void> _handleRatingLogic(String ratedUserId) async {
+    setState(() => _isRating = true);
+    try {
+      final allRatings = await _ratingService.getRatingsForUser(ratedUserId);
+
+      if (allRatings.isEmpty) {
+        setState(() => _isRating = false);
+        return; 
+      }
+
+      final sum = allRatings.map((r) => r.score).reduce((a, b) => a + b);
+      final newAverage = sum / allRatings.length;
+
+      await _userService.updateUserScore(ratedUserId, newAverage);
+
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Avaliação registrada! O score do usuário foi atualizado para ${newAverage.toStringAsFixed(1)}.')),
+        );
+      }
+
+    } catch (e) {
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao calcular score: $e')),
+        );
+      }
+    } finally {
+      if(mounted) setState(() => _isRating = false);
+    }
+  }
 }
 
+
 Widget _buildAchievementsTab(UserModel user) {
-    // 1. Define a lista de todas as conquistas possíveis
     final List<Achievement> allAchievements = [
       Achievement(
         title: "Bom de Bola",
@@ -310,9 +422,6 @@ Widget _buildAchievementsTab(UserModel user) {
       ),
     ];
 
-    // 2. Lógica para "desbloquear" (simples, pode ser melhorada)
-    // (A lógica de 'eventos' e 'equipes' precisaria de queries extras,
-    // então vamos focar na de 'score' por enquanto)
     final List<Achievement> processedAchievements = allAchievements.map((ach) {
       bool unlocked = false;
       if (ach.title == "Bom Espírito") {
@@ -330,14 +439,13 @@ Widget _buildAchievementsTab(UserModel user) {
     }).toList();
 
 
-    // 3. Constrói o Grid
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, // 2 colunas
+        crossAxisCount: 2, 
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 1.0, // Quadrado
+        childAspectRatio: 1.0, 
       ),
       itemCount: processedAchievements.length,
       itemBuilder: (context, index) {
@@ -396,4 +504,211 @@ Widget _buildAchievementsTab(UserModel user) {
      );
    }
  }
+class _ProfileEventCard extends StatelessWidget {
+  final Event event;
+  final bool isPast;
+  final VoidCallback onRatePressed;
 
+  const _ProfileEventCard({
+    required this.event,
+    required this.isPast,
+    required this.onRatePressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundImage: NetworkImage(event.imageUrl),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      event.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${event.dateTime.day.toString().padLeft(2, '0')}/${event.dateTime.month.toString().padLeft(2, '0')}/${event.dateTime.year}",
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(width: 16),
+                  const Icon(Icons.access_time_outlined, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${event.dateTime.hour.toString().padLeft(2, '0')}:${event.dateTime.minute.toString().padLeft(2, '0')}",
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      event.location.name,
+                      style: const TextStyle(color: Colors.grey),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              // --- BOTÃO DE AVALIAR (SÓ APARECE SE FOR PASSADO) ---
+              if (isPast) ...[
+                const Divider(height: 20),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.star_outline, size: 18),
+                    label: const Text('AVALIAR EVENTO'),
+                    onPressed: onRatePressed,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.orangeAccent,
+                    ),
+                  ),
+                ),
+              ]
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- WIDGET DO MODAL DE AVALIAÇÃO (COPIADO DE MY_EVENTS_SCREEN) ---
+class _RatingParticipantTile extends StatefulWidget {
+  final LocalUser participant;
+  final RatingService ratingService;
+  final String eventId;
+  final String raterUserId;
+  final Function(String ratedUserId, double newScore) onRatingSubmited;
+
+  const _RatingParticipantTile({
+    required this.participant,
+    required this.ratingService,
+    required this.eventId,
+    required this.raterUserId,
+    required this.onRatingSubmited,
+  });
+
+  @override
+  State<_RatingParticipantTile> createState() => _RatingParticipantTileState();
+}
+
+class _RatingParticipantTileState extends State<_RatingParticipantTile> {
+  double _currentRating = 0;
+  bool _hasRated = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAlreadyRated();
+  }
+
+  void _checkIfAlreadyRated() async {
+    final hasRated = await widget.ratingService.hasUserAlreadyRated(
+      widget.eventId,
+      widget.raterUserId,
+      widget.participant.id,
+    );
+    if (mounted) {
+      setState(() {
+        _hasRated = hasRated;
+        _isLoading = false;
+      });
+    }
+  }
+  
+  void _submit(double score) async {
+    setState(() => _isLoading = true);
+    
+    final newRating = Rating(
+      id: '', 
+      eventId: widget.eventId,
+      raterUserId: widget.raterUserId,
+      ratedUserId: widget.participant.id,
+      score: score,
+      createdAt: Timestamp.now(),
+    );
+
+    await widget.ratingService.addOrUpdateRating(newRating);
+    
+    if (mounted) {
+      setState(() {
+         _hasRated = true;
+         _isLoading = false;
+      });
+    }
+    widget.onRatingSubmited(widget.participant.id, score);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const ListTile(title: Text("Verificando..."), leading: CircularProgressIndicator(strokeWidth: 2,));
+    }
+    
+    if (_hasRated) {
+      return ListTile(
+        leading: CircleAvatar(
+          backgroundImage: NetworkImage(widget.participant.avatarUrl),
+        ),
+        title: Text(widget.participant.name),
+        trailing: const Icon(Icons.check_circle, color: Colors.green),
+        subtitle: const Text("Avaliação enviada!"),
+      );
+    }
+
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: NetworkImage(widget.participant.avatarUrl),
+      ),
+      title: Text(widget.participant.name),
+      subtitle: Row(
+        children: List.generate(5, (index) {
+          final starScore = index + 1.0;
+          return IconButton(
+            icon: Icon(
+              _currentRating >= starScore ? Icons.star : Icons.star_border,
+              color: Colors.orangeAccent,
+            ),
+            onPressed: () {
+              setState(() => _currentRating = starScore);
+              _submit(starScore);
+            },
+          );
+        }),
+      ),
+    );
+  }
+}
