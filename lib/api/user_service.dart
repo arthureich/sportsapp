@@ -58,4 +58,17 @@ Future<List<UserModel>> getUsersData(List<String> userIds) async { // <-- DEFINI
       rethrow; // Re-lança o erro para ser tratado na UI
     }
   }
+
+  Future<void> updateUserScore(String userId, double newScore) async {
+    try {
+      // Arredonda o score para 1 casa decimal
+      final roundedScore = (newScore * 10).round() / 10;
+      await _usersCollection.doc(userId).update({
+        'scoreEsportividade': roundedScore,
+      });
+    } catch (e) {
+      debugPrint("Erro ao atualizar score do usuário: $e");
+      rethrow;
+    }
+  }
 }

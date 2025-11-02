@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
-import '../../api/user_service.dart'; 
-import '../../models/user_model.dart'; 
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
-import '../../api/event_service.dart'; 
-import '../../models/event_model.dart'; 
 import '../events/my_events_screen.dart'; 
+import '../../api/event_service.dart'; 
+import '../../api/user_service.dart'; 
+import '../../models/user_model.dart'; 
+import '../../models/event_model.dart'; 
+import '../../models/achievement_model.dart';
 
 enum ProfileMenuOption { editProfile, settings, faq, logout }
 
@@ -57,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2, // Número de abas
+      length: 2, 
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Meu Perfil'),
@@ -114,36 +115,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                        return const Center(child: Text('Erro ao carregar perfil.'));
                      }
                      if (!snapshot.hasData || snapshot.data == null) {
-                       // Se não tem usuário ou ID é nulo, mostra um placeholder ou mensagem
                        return _buildProfileHeaderPlaceholder();
                      }
 
-                     final user = snapshot.data!; // Temos os dados do usuário!
-                     return _buildProfileHeader(user); // Passa o UserModel para o header
+                     final user = snapshot.data!;
+                     return Column(
+                       children: [
+                         _buildProfileHeader(user), // Constrói o header
+                         TabBar( // A TabBar fica *dentro* do SliverToBoxAdapter
+                           labelColor: Colors.orangeAccent,
+                           unselectedLabelColor: Colors.grey,
+                           indicatorColor: Colors.orangeAccent,
+                           tabs: const [
+                             Tab(icon: Icon(Icons.event), text: 'Meus Eventos'),
+                             Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
+                           ],
+                         ),
+                       ],
+                     );
                    },
                  ),
                ),
-              SliverPersistentHeader( // Mantém a TabBar fixa abaixo do header
-                delegate: _SliverAppBarDelegate(
-                  const TabBar(
-                    labelColor: Colors.orangeAccent,
-                    unselectedLabelColor: Colors.grey,
-                    indicatorColor: Colors.orangeAccent,
-                    tabs: [
-                      Tab(icon: Icon(Icons.event), text: 'Meus Eventos'),
-                      Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
-                    ],
-                  ),
-                ),
-                pinned: true,
-              ),
             ];
           },
-          body: TabBarView(
-            children: [
-              _buildMyEventsList(), 
-              const Center(child: Text("Grid de conquistas aqui")),
-            ],
+          body: StreamBuilder<UserModel?>( 
+            stream: _currentUserId != null ? _userService.getUserStream(_currentUserId) : null,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data == null) {
+                 return TabBarView(
+                  children: [
+                    Center(child: Text('Carregando eventos...')),
+                    Center(child: Text('Carregando conquistas...')),
+                  ],
+                );
+              }
+              final user = snapshot.data!;
+              
+              return TabBarView(
+                children: [
+                  _buildMyEventsList(), 
+                  _buildAchievementsTab(user), 
+                ],
+              );
+            }
           ),
         ),
       ),
@@ -190,7 +204,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-   // Widget placeholder para quando os dados não carregaram
    Widget _buildProfileHeaderPlaceholder() {
      return const Column(
        children: [
@@ -249,19 +262,125 @@ Widget _buildMyEventsList() {
           );
         }
 
-        // Reutiliza o EventCard da my_events_screen
         return ListView.builder(
-          padding: const EdgeInsets.all(16.0), // Adiciona padding
+          padding: const EdgeInsets.all(16.0), 
           itemCount: myEvents.length,
           itemBuilder: (context, index) {
             final event = myEvents[index];
-            return EventCard(event: event); // Reutiliza o card
+            return EventCard(event: event, isPast: false, onRatePressed: (){},); // Reutiliza o card
           },
         );
       },
     );
  }
 }
+
+Widget _buildAchievementsTab(UserModel user) {
+    // 1. Define a lista de todas as conquistas possíveis
+    final List<Achievement> allAchievements = [
+      Achievement(
+        title: "Bom de Bola",
+        description: "Participe do seu primeiro evento de Futebol.",
+        icon: Icons.sports_soccer,
+      ),
+      Achievement(
+        title: "Bom Espírito",
+        description: "Receba uma avaliação de 4.5 estrelas ou mais.",
+        icon: Icons.sentiment_very_satisfied,
+      ),
+      Achievement(
+        title: "Popular",
+        description: "Receba 10 avaliações no total.",
+        icon: Icons.star_rate,
+      ),
+      Achievement(
+        title: "Organizador",
+        description: "Crie seu primeiro evento.",
+        icon: Icons.edit_calendar,
+      ),
+      Achievement(
+        title: "Veterano",
+        description: "Participe de 5 eventos.",
+        icon: Icons.military_tech,
+      ),
+      Achievement(
+        title: "Membro de Equipe",
+        description: "Entre para sua primeira equipe.",
+        icon: Icons.group,
+      ),
+    ];
+
+    // 2. Lógica para "desbloquear" (simples, pode ser melhorada)
+    // (A lógica de 'eventos' e 'equipes' precisaria de queries extras,
+    // então vamos focar na de 'score' por enquanto)
+    final List<Achievement> processedAchievements = allAchievements.map((ach) {
+      bool unlocked = false;
+      if (ach.title == "Bom Espírito") {
+        unlocked = user.scoreEsportividade >= 4.5;
+      }
+      // TODO: Adicionar lógica para as outras conquistas
+      // (Ex: fazer um count em 'eventos' onde o user é participante/organizador)
+      
+      return Achievement(
+        title: ach.title,
+        description: ach.description,
+        icon: ach.icon,
+        isUnlocked: unlocked,
+      );
+    }).toList();
+
+
+    // 3. Constrói o Grid
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, // 2 colunas
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.0, // Quadrado
+      ),
+      itemCount: processedAchievements.length,
+      itemBuilder: (context, index) {
+        final ach = processedAchievements[index];
+        final color = ach.isUnlocked ? Colors.orangeAccent : Colors.grey[300];
+        final iconColor = ach.isUnlocked ? Colors.white : Colors.grey[600];
+
+        return Card(
+          elevation: ach.isUnlocked ? 4 : 1,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: ach.isUnlocked ? Colors.orange.shade100 : Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 25,
+                  backgroundColor: color,
+                  child: Icon(ach.icon, color: iconColor, size: 30),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  ach.title, 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  ach.description,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
  class StatItem extends StatelessWidget {
    final String count;
    final String label;
@@ -277,29 +396,4 @@ Widget _buildMyEventsList() {
      );
    }
  }
-
-class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverAppBarDelegate(this._tabBar);
-
-  final TabBar _tabBar;
-
-  @override
-  double get minExtent => _tabBar.preferredSize.height;
-  @override
-  double get maxExtent => _tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor, // Cor de fundo para a TabBar
-      child: _tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
-  }
-}
 

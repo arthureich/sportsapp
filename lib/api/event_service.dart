@@ -22,7 +22,6 @@ class EventService {
       radiusInKm: radiusInKm,
       field: 'geo',
       geopointFrom: (data) {
-         // Converte o 'data' (Object?) para um Map
          final docData = data as Map<String, dynamic>?;
          if (docData == null) {
            throw Exception('Dados do documento estão nulos.');
@@ -44,7 +43,6 @@ class EventService {
 
       for (final doc in snapshots) {
         try {
-          // Filtra eventos futuros AQUI (pós-query)
           final event = Event.fromSnapshot(doc);
           if (event.dateTime.isAfter(now)) {
             events.add(event);
