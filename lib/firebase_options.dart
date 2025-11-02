@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
+    apiKey: 'AIzaSyC0brkQQBzO3N_PE3KvYi3fXo0iW3ex7Xg',
     appId: '1:551468081879:android:cf54d8ff94707ea23a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -87,4 +87,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'joga-mais-fb74e.firebasestorage.app',
     measurementId: 'G-45ZT5J57YR',
   );
+
 }

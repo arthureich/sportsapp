@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:ui';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:ui';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart';
 import '../events/event_detail_screen.dart';
@@ -20,14 +20,10 @@ class _HomeContentState extends State<HomeContent> {
   static const LatLng _initialPosition = LatLng(-24.9555, -53.4552);
 
   Position? _currentPosition; 
-  // Guarda o Stream que será ouvido (agora é dinâmico)
   Stream<List<Event>>? _eventsStream;
-  // Controla o estado de carregamento da localização
   bool _isLoadingLocation = true;
   String? _locationError;
   GoogleMapController? _mapController;
-  
-  // TODO: Raio de busca em KM (pode ser um filtro no futuro)
   final double _searchRadiusKm = 20.0;
 
   @override
@@ -36,7 +32,6 @@ class _HomeContentState extends State<HomeContent> {
     _fetchLocationAndLoadEvents();
   }
 
-  // --- NOVA FUNÇÃO: Busca localização e define o Stream ---
   Future<void> _fetchLocationAndLoadEvents() async {
     if (!mounted) return;
     setState(() {
@@ -50,14 +45,13 @@ class _HomeContentState extends State<HomeContent> {
 
       setState(() {
         _currentPosition = position;
-        // DEFINE O STREAM para usar a nova função do serviço
-        _eventsStream = _eventService.getNearbyEvents(position, _searchRadiusKm);
+        _eventsStream = _eventService.getNearbyEvents(position, _searchRadiusKm).asBroadcastStream();
         _isLoadingLocation = false;
         
-        // Opcional: mover o mapa para a localização do usuário
         _mapController?.animateCamera(
-          CameraUpdate.newLatLng(
+          CameraUpdate.newLatLngZoom(
             LatLng(position.latitude, position.longitude),
+            13, // Zoom
           ),
         );
       });
@@ -67,7 +61,7 @@ class _HomeContentState extends State<HomeContent> {
         _locationError = e.toString();
         _isLoadingLocation = false;
         
-        // Fallback: Se der erro, carrega eventos próximos da localização PADRÃO (Cascavel)
+        // Fallback: Carrega eventos próximos de Cascavel
          _eventsStream = _eventService.getNearbyEvents(
             Position(
               latitude: _initialPosition.latitude, 
@@ -76,45 +70,38 @@ class _HomeContentState extends State<HomeContent> {
               altitudeAccuracy: 0, heading: 0, headingAccuracy: 0, speed: 0, speedAccuracy: 0
             ), 
             _searchRadiusKm
-         );
+         ).asBroadcastStream();
       });
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
   return Stack(
       children: [
-        // --- CONTEÚDO PRINCIPAL (MAPA) ---
         _buildMap(),
-        
-        // --- PAINEL DESLIZANTE ---
         _buildSlidingPanel(),
-
-        // --- BARRAS DE FILTRO SUPERIORES ---
         _buildTopFilterBars(),
         
-        // --- INDICADOR DE LOADING DE LOCALIZAÇÃO ---
-        // Se estiver carregando a localização (não os eventos), mostra um loading
+        // --- Feedback de Loading / Erro ---
         if (_isLoadingLocation)
           Container(
-            color: Colors.white.withValues(alpha: 0.5),
+            color: Colors.white.withValues(alpha:0.5),
             child: const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 10),
-                  Text("Buscando sua localização...")
+                  Text("Buscando sua localização...", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
                 ],
               ),
             ),
           ),
           
-        // --- MENSAGEM DE ERRO DE LOCALIZAÇÃO ---
         if (_locationError != null && !_isLoadingLocation)
            Positioned(
-             top: 150, // Posição abaixo dos filtros
+             top: 150,
              left: 16,
              right: 16,
              child: Material(
@@ -142,8 +129,6 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildMap() {
-    // Se o stream ainda não foi definido (enquanto busca localização)
-    // Mostra o mapa centralizado em Cascavel, sem marcadores.
     if (_eventsStream == null) {
       return GoogleMap(
           initialCameraPosition: const CameraPosition(target: _initialPosition, zoom: 13),
@@ -152,14 +137,10 @@ class _HomeContentState extends State<HomeContent> {
       );
     }
     
-    // Constrói o mapa usando o _eventsStream (que foi definido após pegar a localização)
     return StreamBuilder<List<Event>>(
-      stream: _eventsStream, // Ouve o stream de estado
+      stream: _eventsStream,
       builder: (context, snapshot) {
-        
         Set<Marker> markers = {};
-        
-        // Se temos dados, criamos os marcadores
         if (snapshot.hasData) {
           markers = snapshot.data!.map((event) {
             return Marker(
@@ -174,7 +155,7 @@ class _HomeContentState extends State<HomeContent> {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => EventDetailScreen(event: event),
+                      builder: (context) => EventDetailScreen(event: event), //
                     ),
                   );
                 },
@@ -182,10 +163,6 @@ class _HomeContentState extends State<HomeContent> {
             );
           }).toSet();
         }
-        
-        // Se estamos carregando os eventos (após pegar localização),
-        // mostramos o mapa na posição do usuário, mas sem marcadores ainda.
-        // O CircularProgressIndicator do painel indicará o loading.
 
         return GoogleMap(
           initialCameraPosition: CameraPosition(
@@ -196,14 +173,13 @@ class _HomeContentState extends State<HomeContent> {
           ),
           onMapCreated: (controller) => _mapController = controller,
           markers: markers,
-          myLocationEnabled: true, // Habilita o pontinho azul do usuário
+          myLocationEnabled: true,
           myLocationButtonEnabled: true,
         );
       },
     );
   }
 
-  // --- WIDGET DO PAINEL (Baseado no Stream dinâmico) ---
   Widget _buildSlidingPanel() {
     return DraggableScrollableSheet(
       initialChildSize: 0.25,
@@ -219,19 +195,15 @@ class _HomeContentState extends State<HomeContent> {
             filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8), 
+                color: Colors.white.withValues(alpha: 0.8), // Corrigido de withValues
               ),
-              // StreamBuilder para ouvir os eventos do Firebase em tempo real.
               child: StreamBuilder<List<Event>>(
                 stream: _eventsStream, // Ouve o MESMO stream do mapa
                 builder: (context, snapshot) {
                   
-                  // Se o stream é nulo, estamos esperando a localização
                   if (_eventsStream == null) {
                     return _buildPanelHeader(0, "Buscando localização...");
                   }
-                  
-                  // Se estamos esperando os eventos do stream
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Column(
                       children: [
@@ -243,14 +215,12 @@ class _HomeContentState extends State<HomeContent> {
                       ],
                     );
                   }
-                  
                   if (snapshot.hasError) {
                     return _buildPanelHeader(0, "Erro ao carregar eventos.");
                   }
 
                   final events = snapshot.data ?? [];
                   
-                  // Se não houver dados.
                   if (events.isEmpty) {
                     return ListView(
                       controller: scrollController,
@@ -260,10 +230,9 @@ class _HomeContentState extends State<HomeContent> {
                     );
                   }
 
-                  // Temos eventos!
                   return ListView.builder(
                     controller: scrollController,
-                    itemCount: events.length + 1, // +1 para o cabeçalho
+                    itemCount: events.length + 1,
                     itemBuilder: (context, index) {
                       if (index == 0) {
                         return _buildPanelHeader(events.length, "${events.length} Eventos encontrados");
@@ -281,9 +250,6 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  // --- Widgets Auxiliares (refatorados) ---
-
-  // Header do painel agora aceita uma mensagem customizada
   Widget _buildPanelHeader(int count, String message) {
     return Column(
       children: [
@@ -298,7 +264,7 @@ class _HomeContentState extends State<HomeContent> {
         ),
         const SizedBox(height: 10),
         Text(
-          message, // Usa a mensagem dinâmica
+          message,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 10),
@@ -320,7 +286,7 @@ class _HomeContentState extends State<HomeContent> {
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1), // Correção
+                  color: Colors.black.withValues(alpha: 0.1), // Corrigido
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -388,7 +354,7 @@ class _HomeContentState extends State<HomeContent> {
             // TODO: Adicionar lógica de filtro aqui
           });
         },
-        backgroundColor: Colors.white.withValues(alpha: 0.8), // Correção
+        backgroundColor: Colors.white.withValues(alpha: 0.8), 
         selectedColor: const Color(0xFFC8E6C9),
         labelStyle: TextStyle(
           color: isSelected ? Colors.green[800] : Colors.black,
@@ -422,7 +388,7 @@ class _HomeContentState extends State<HomeContent> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
+            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)), //
           );
         },
         borderRadius: BorderRadius.circular(16),
@@ -431,7 +397,6 @@ class _HomeContentState extends State<HomeContent> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                // Usa a imageUrl do evento, ou um placeholder se vazia
                 event.imageUrl.isNotEmpty ? event.imageUrl : 'https://picsum.photos/seed/${event.id}/200/200',
                 width: 70,
                 height: 70,
@@ -470,20 +435,12 @@ class _HomeContentState extends State<HomeContent> {
       ),
     );
   }
-  
-  // --- FUNÇÃO HELPER DO GEOLOCATOR (Padrão) ---
-  /// Determina a posição atual do dispositivo.
-  /// Quando os serviços de localização não estão ativados ou
-  /// as permissões são negadas, um 'Exception' é lançado.
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Testa se os serviços de localização estão ativos.
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // Serviços de localização não estão ativos. Não é possível continuar
-      // acessando a posição e requisita a ativação.
       throw Exception('Serviços de localização estão desativados.');
     }
 
@@ -491,19 +448,15 @@ class _HomeContentState extends State<HomeContent> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        // Permissões negadas.
         throw Exception('Permissão de localização negada.');
       }
     }
     
     if (permission == LocationPermission.deniedForever) {
-      // Permissões negadas para sempre.
       throw Exception(
           'Permissão de localização negada permanentemente. Não é possível requisitar permissões.');
     } 
 
-    // Quando chegamos aqui, as permissões estão garantidas e
-    // podemos continuar acessando a posição do dispositivo.
     return await Geolocator.getCurrentPosition();
   }
 }

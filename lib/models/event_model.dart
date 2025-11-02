@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:flutter/foundation.dart'; 
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Precisamos da sua localização para mostrar eventos esportivos próximos a você.</string>
+    <string>Precisamos da sua localização para mostrar eventos esportivos próximos a você.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
