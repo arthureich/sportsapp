@@ -41,7 +41,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
+    apiKey: 'AIzaSyC6Gs81C8skF1I6eBtlGcNZxhAqMdUGxlY',
     appId: '1:551468081879:web:a6ac2e39df34a4af3a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
+    apiKey: 'AIzaSyC0brkQQBzO3N_PE3KvYi3fXo0iW3ex7Xg',
     appId: '1:551468081879:android:cf54d8ff94707ea23a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
+    apiKey: 'AIzaSyBYOPVda9NLMZtyQIDpsC14lfqO42BiqQQ',
     appId: '1:551468081879:ios:eb1eb3113422b0cc3a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -69,7 +69,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
+    apiKey: 'AIzaSyBYOPVda9NLMZtyQIDpsC14lfqO42BiqQQ',
     appId: '1:551468081879:ios:eb1eb3113422b0cc3a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -79,7 +79,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90',
+    apiKey: 'AIzaSyC6Gs81C8skF1I6eBtlGcNZxhAqMdUGxlY',
     appId: '1:551468081879:web:2db5dee9aa7adc563a4692',
     messagingSenderId: '551468081879',
     projectId: 'joga-mais-fb74e',
@@ -87,4 +87,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'joga-mais-fb74e.firebasestorage.app',
     measurementId: 'G-45ZT5J57YR',
   );
+
 }

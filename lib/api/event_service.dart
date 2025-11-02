@@ -73,19 +73,20 @@ class EventService {
     return _eventsCollection.doc(eventId).snapshots();
   }
   Future<void> addEvent(Event event) async {
-    try {
-      await _eventsCollection.add(event.toJson());
-    } catch (e) {
-      if (kDebugMode) {
-        print("Erro ao adicionar evento: $e");
-      }
-      final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception("Usuário não autenticado para criar um evento.");
+  try {
+    await _eventsCollection.add(event.toJson());
+  } catch (e) {
+    if (kDebugMode) {
+      print("Erro ao adicionar evento: $e");
     }
-     await _eventsCollection.add(event.toJson());
+    // ----- ESTAS LINHAS CAUSAM O LOADING INFINITO -----
+    final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    throw Exception("Usuário não autenticado para criar um evento.");
   }
-  }
+   await _eventsCollection.add(event.toJson()); // <-- TENTA ADICIONAR DE NOVO
+}
+}
 
   Future<void> joinEvent(String eventId, LocalUser user) async {
     try {

@@ -20,7 +20,7 @@
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAM_Tl3sFCnYaHEOA2kvSupGt3oDj1qR90"
+          "current_key": "AIzaSyC0brkQQBzO3N_PE3KvYi3fXo0iW3ex7Xg"
         }
       ],
       "services": {
@@ -29,6 +29,13 @@
             {
               "client_id": "551468081879-t3k29kqfg225h80gvdi44qlpkj0ajf03.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "551468081879-7g0ihrua3th2qps2r2nr74pn7idil4sd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
             }
           ]
         }
