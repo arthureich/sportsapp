@@ -61,7 +61,6 @@ class _HomeContentState extends State<HomeContent> {
         _locationError = e.toString();
         _isLoadingLocation = false;
         
-        // Fallback: Carrega eventos próximos de Cascavel
          _eventsStream = _eventService.getNearbyEvents(
             Position(
               latitude: _initialPosition.latitude, 
@@ -83,7 +82,6 @@ class _HomeContentState extends State<HomeContent> {
         _buildSlidingPanel(),
         _buildTopFilterBars(),
         
-        // --- Feedback de Loading / Erro ---
         if (_isLoadingLocation)
           Container(
             color: Colors.white.withValues(alpha:0.5),
@@ -142,7 +140,13 @@ class _HomeContentState extends State<HomeContent> {
       builder: (context, snapshot) {
         Set<Marker> markers = {};
         if (snapshot.hasData) {
-          markers = snapshot.data!.map((event) {
+          final allEvents = snapshot.data!;
+          final filteredEvents = (_selectedSport == 'Todos')
+              ? allEvents 
+              : allEvents
+                  .where((event) => event.sport == _selectedSport)
+                  .toList();
+        markers = filteredEvents.map((event) {
             return Marker(
               markerId: MarkerId(event.id),
               position: LatLng(
@@ -155,7 +159,7 @@ class _HomeContentState extends State<HomeContent> {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => EventDetailScreen(event: event), //
+                      builder: (context) => EventDetailScreen(event: event),
                     ),
                   );
                 },
@@ -218,14 +222,21 @@ class _HomeContentState extends State<HomeContent> {
                   if (snapshot.hasError) {
                     return _buildPanelHeader(0, "Erro ao carregar eventos.");
                   }
-
-                  final events = snapshot.data ?? [];
+                  final allEvents = snapshot.data ?? [];
+                  final events = (_selectedSport == 'Todos')
+                      ? allEvents
+                      : allEvents
+                          .where((event) => event.sport == _selectedSport)
+                          .toList();
                   
                   if (events.isEmpty) {
+                    final message = _selectedSport == 'Todos'
+                        ? "Nenhum evento encontrado por perto."
+                        : "Nenhum evento de '$_selectedSport' encontrado.";
                     return ListView(
                       controller: scrollController,
                       children: [
-                         _buildPanelHeader(0, "Nenhum evento encontrado por perto."),
+                        _buildPanelHeader(0, message),
                       ],
                     );
                   }
@@ -235,7 +246,8 @@ class _HomeContentState extends State<HomeContent> {
                     itemCount: events.length + 1,
                     itemBuilder: (context, index) {
                       if (index == 0) {
-                        return _buildPanelHeader(events.length, "${events.length} Eventos encontrados");
+                        return _buildPanelHeader(
+                            events.length, "${events.length} Eventos encontrados");
                       }
                       final event = events[index - 1];
                       return _buildEventListItem(event);
@@ -316,7 +328,10 @@ class _HomeContentState extends State<HomeContent> {
               ),
               const SizedBox(width: 8),
               InkWell(
-                onTap: () {},
+                onTap: () {
+                  
+                  // TODO: Abrir modal de filtros avançados (data, vagas, etc)
+                },
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   height: 40,
@@ -351,7 +366,6 @@ class _HomeContentState extends State<HomeContent> {
         onSelected: (selected) {
           setState(() {
             _selectedSport = sport;
-            // TODO: Adicionar lógica de filtro aqui
           });
         },
         backgroundColor: Colors.white.withValues(alpha: 0.8), 
