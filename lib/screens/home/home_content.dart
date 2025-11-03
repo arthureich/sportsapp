@@ -25,6 +25,10 @@ class _HomeContentState extends State<HomeContent> {
   String? _locationError;
   GoogleMapController? _mapController;
   final double _searchRadiusKm = 20.0;
+  DateTime? _filterDate;
+  double _filterDistance = 20.0;
+  bool _filterHasVacancies = false;
+  TimeOfDay? _filterTime;
 
   @override
   void initState() {
@@ -329,8 +333,218 @@ class _HomeContentState extends State<HomeContent> {
               const SizedBox(width: 8),
               InkWell(
                 onTap: () {
-                  
-                  // TODO: Abrir modal de filtros avançados (data, vagas, etc)
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => Container(
+                      height: MediaQuery.of(context).size.height * 0.7,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 10),
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  'Filtros Avançados',
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          Expanded(
+                            child: ListView(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              children: [
+                                const Text('Data e Hora', style: TextStyle(fontWeight: FontWeight.w500)),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        icon: const Icon(Icons.calendar_today),
+                                        label: Text(_filterDate == null 
+                                          ? 'Selecionar Data'
+                                          : '${_filterDate!.day}/${_filterDate!.month}/${_filterDate!.year}'),
+                                        onPressed: () async {
+                                          final date = await showDatePicker(
+                                            context: context,
+                                            initialDate: _filterDate ?? DateTime.now(),
+                                            firstDate: DateTime.now(),
+                                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                                          );
+                                          if (date != null) {
+                                            setState(() => _filterDate = date);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        icon: const Icon(Icons.access_time),
+                                        label: Text(_filterTime == null 
+                                          ? 'Selecionar Hora'
+                                          : '${_filterTime!.hour}:${_filterTime!.minute.toString().padLeft(2, '0')}'),
+                                        onPressed: () async {
+                                          final time = await showTimePicker(
+                                            context: context,
+                                            initialTime: _filterTime ?? TimeOfDay.now(),
+                                          );
+                                          if (time != null) {
+                                            setState(() => _filterTime = time);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+                                
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Distância máxima', style: TextStyle(fontWeight: FontWeight.w500)),
+                                    Text('${_filterDistance.round()} km', style: TextStyle(color: Colors.grey[600])),
+                                  ],
+                                ),
+                                Slider(
+                                  value: _filterDistance,
+                                  min: 1,
+                                  max: 50,
+                                  divisions: 49,
+                                  label: '${_filterDistance.round()} km',
+                                  onChanged: (value) => setState(() => _filterDistance = value),
+                                ),
+                                const SizedBox(height: 24),
+
+                                SwitchListTile(
+                                  title: const Text('Apenas com vagas disponíveis', 
+                                    style: TextStyle(fontWeight: FontWeight.w500)),
+                                  value: _filterHasVacancies,
+                                  onChanged: (value) => setState(() => _filterHasVacancies = value),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _filterDate = null;
+                                        _filterTime = null;
+                                        _filterDistance = 20.0;
+                                        _filterHasVacancies = false;
+                                      });
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text('Limpar Filtros'),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: FilledButton(
+                                    onPressed: () {
+                                      // Aplicar os filtros
+                                      if (_currentPosition != null) {
+                                        setState(() {
+                                          // Atualiza o stream com os novos filtros
+                                          _eventsStream = _eventService
+                                              .getNearbyEvents(_currentPosition!, _filterDistance)
+                                              .map((events) => events.where((event) {
+                                                    // Filtra por data se selecionada
+                                                    if (_filterDate != null) {
+                                                      final eventDate = event.dateTime;
+                                                      if (eventDate.year != _filterDate!.year ||
+                                                          eventDate.month != _filterDate!.month ||
+                                                          eventDate.day != _filterDate!.day) {
+                                                        return false;
+                                                      }
+                                                    }
+
+                                                    // Filtra por hora se selecionada
+                                                    if (_filterTime != null) {
+                                                      final eventTime = TimeOfDay.fromDateTime(event.dateTime);
+                                                      if (eventTime.hour != _filterTime!.hour ||
+                                                          eventTime.minute != _filterTime!.minute) {
+                                                        return false;
+                                                      }
+                                                    }
+
+                                                    // Filtra por vagas disponíveis
+                                                    if (_filterHasVacancies) {
+                                                      if (event.participants.length >= event.maxParticipants) {
+                                                        return false;
+                                                      }
+                                                    }
+
+                                                    return true;
+                                                  }).toList())
+                                              .asBroadcastStream();
+                                        });
+                                      }
+                                      
+                                      // Mostra snackbar com os filtros ativos
+                                      String filterMessage = 'Filtros aplicados: ';
+                                      List<String> activeFilters = [];
+                                      
+                                      if (_filterDate != null) {
+                                        activeFilters.add('Data: ${_filterDate!.day}/${_filterDate!.month}');
+                                      }
+                                      if (_filterTime != null) {
+                                        activeFilters.add('Hora: ${_filterTime!.hour}:${_filterTime!.minute.toString().padLeft(2, '0')}');
+                                      }
+                                      activeFilters.add('Distância: ${_filterDistance.round()}km');
+                                      if (_filterHasVacancies) {
+                                        activeFilters.add('Apenas com vagas');
+                                      }
+                                      
+                                      filterMessage += activeFilters.join(', ');
+                                      
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(filterMessage),
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text('Aplicar'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 },
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
@@ -436,7 +650,6 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    // Formatando data e hora
                     "${event.location.name} • ${event.dateTime.day}/${event.dateTime.month} às ${event.dateTime.hour.toString().padLeft(2, '0')}:${event.dateTime.minute.toString().padLeft(2, '0')}",
                     style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     overflow: TextOverflow.ellipsis,
