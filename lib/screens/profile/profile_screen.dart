@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_1/api/notification_service.dart';
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
-import '../events/my_events_screen.dart';
 import '../events/event_detail_screen.dart';
 import '../../api/event_service.dart'; 
 import '../../api/user_service.dart'; 
@@ -23,6 +23,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final NotificationService _notificationService = NotificationService();
   final UserService _userService = UserService();
   final EventService _eventService = EventService();
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; 
@@ -30,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final RatingService _ratingService = RatingService();
   bool _isRating = false;
 
-  void _onMenuOptionSelected(BuildContext context, ProfileMenuOption option) {
+  Future<void> _onMenuOptionSelected(BuildContext context, ProfileMenuOption option) async {
     switch (option) {
       case ProfileMenuOption.editProfile:
          if (_currentUserId != null) {
@@ -56,7 +57,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
         break;
       case ProfileMenuOption.logout:
-         FirebaseAuth.instance.signOut();
+        if (_currentUserId != null) {
+            await _notificationService.removeTokenOnLogout(_currentUserId);
+         }
+         await FirebaseAuth.instance.signOut();
         break;
     }
   }

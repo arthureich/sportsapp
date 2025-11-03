@@ -3,15 +3,18 @@ import 'package:flutter_application_1/screens/home/home_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'api/notification_service.dart';
 import 'firebase_options.dart';
 import 'screens/auth/login_screen.dart';
 
+final NotificationService _notificationService = NotificationService();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "api.env");
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await _notificationService.initNotifications();
   runApp(const MyApp());
 }
 
@@ -55,18 +58,16 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(), // Ouve o estado de autenticação
+        stream: FirebaseAuth.instance.authStateChanges(), 
         builder: (context, snapshot) {
-          // Enquanto verifica o estado
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator())); // Ou uma tela de splash
+            return const Scaffold(body: Center(child: CircularProgressIndicator())); 
           }
-          // Se o usuário está logado (snapshot tem dados)
           if (snapshot.hasData) {
-            return const NewHomeScreen(); // Vai para a tela principal
+            _notificationService.saveTokenAfterLogin(snapshot.data!.uid);
+            return const NewHomeScreen(); 
           }
-          // Se o usuário não está logado
-          return const LoginScreen(); // Vai para a tela de login
+          return const LoginScreen(); 
         },
       ),
     );

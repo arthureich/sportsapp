@@ -1,7 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// Este modelo representa um utilizador individual guardado no Firestore.
-// Ele é usado para converter os dados do banco de dados num objeto Dart fácil de usar.
 class UserModel {
   final String id;
   final String nome;
@@ -10,6 +8,7 @@ class UserModel {
   final String bio;
   final double scoreEsportividade;
   final List<String> esportesInteresse;
+  final List<String> fcmTokens;
 
   UserModel({
     required this.id,
@@ -19,10 +18,9 @@ class UserModel {
     required this.bio,
     required this.scoreEsportividade,
     required this.esportesInteresse,
+    required this.fcmTokens,
   });
 
-  // Factory constructor: Cria uma instância de UserModel a partir de um DocumentSnapshot do Firestore.
-  // Este é o método que "traduz" os dados da nuvem para o seu aplicativo.
   factory UserModel.fromSnapshot(DocumentSnapshot snap) {
     var data = snap.data() as Map<String, dynamic>;
     
@@ -35,6 +33,7 @@ class UserModel {
       scoreEsportividade: (data['scoreEsportividade'] ?? 5.0).toDouble(),
       // Converte a lista de 'dynamic' do Firestore para uma lista de 'String'
       esportesInteresse: List<String>.from(data['esportesInteresse'] ?? []),
+      fcmTokens: List<String>.from(data['fcmTokens'] ?? []),
     );
   }
 }
