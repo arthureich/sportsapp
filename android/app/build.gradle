@@ -26,7 +26,6 @@ if (flutterVersionName == null) {
 
 android {
     namespace = "com.example.flutter_application_1"
-    // Use uma versão recente e estável do SDK de compilação
     compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
@@ -41,7 +40,6 @@ android {
 
     defaultConfig {
         applicationId = "com.example.flutter_application_1"
-        // O minSdk recomendado para a maioria dos apps hoje
         minSdk = 23
         targetSdk = 35
         versionCode = flutterVersionCode.toInteger()

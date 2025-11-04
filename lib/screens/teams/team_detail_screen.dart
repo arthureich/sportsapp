@@ -228,7 +228,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                      radius: 20,
                       backgroundImage: NetworkImage(user.fotoUrl.isNotEmpty
                           ? user.fotoUrl
-                          : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'),
+                          : 'https://avatar.iran.liara.run/public/${user.genero}?username=${user.id}'), // <-- ATUALIZADO
                       onBackgroundImageError: (e, s) {},
                    ),
                  ),

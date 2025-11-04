@@ -1,11 +1,10 @@
-// lib/screens/profile/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../api/user_service.dart';
 import '../../models/user_model.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  final String userId; // Recebe o ID do usuário a ser editado
+  final String userId; 
   const EditProfileScreen({super.key, required this.userId});
 
   @override
@@ -18,7 +17,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _bioController = TextEditingController();
   final UserService _userService = UserService();
   bool _isLoading = false;
-  UserModel? _currentUserData; // Para guardar os dados atuais
+  UserModel? _currentUserData; 
 
   @override
   void initState() {
@@ -26,7 +25,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _loadUserData();
   }
 
-  // Carrega os dados atuais do usuário para preencher o formulário
   Future<void> _loadUserData() async {
     setState(() => _isLoading = true);
     try {
@@ -49,7 +47,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // Salva as alterações no Firestore
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -60,13 +57,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final Map<String, dynamic> updatedData = {
       'nome': _nameController.text.trim(),
       'bio': _bioController.text.trim(),
-      // Adicionar outros campos aqui se necessário (esportesInteresse, etc.)
     };
 
     try {
       await _userService.updateUser(widget.userId, updatedData);
 
-       // Atualiza também o display name no Firebase Auth
        final user = FirebaseAuth.instance.currentUser;
        if (user != null && user.displayName != _nameController.text.trim()) {
          await user.updateDisplayName(_nameController.text.trim());
@@ -77,7 +72,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Perfil atualizado com sucesso!')),
         );
-        Navigator.of(context).pop(); // Volta para a tela anterior
+        Navigator.of(context).pop(); 
       }
     } catch (e) {
       if (mounted) {
@@ -127,10 +122,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         radius: 50,
                         backgroundImage: _currentUserData?.fotoUrl != null && _currentUserData!.fotoUrl.isNotEmpty
                             ? NetworkImage(_currentUserData!.fotoUrl)
-                            : NetworkImage('https://avatar.iran.liara.run/public/boy?username=${widget.userId}') as ImageProvider,
+                            : NetworkImage('https://avatar.iran.liara.run/public/${_currentUserData?.genero ?? 'boy'}?username=${widget.userId}') as ImageProvider, // <-- ATUALIZADO
                          onBackgroundImageError: (exception, stackTrace) {},
                          child: _currentUserData?.fotoUrl == null || _currentUserData!.fotoUrl.isEmpty
-                            ? const Icon(Icons.person, size: 50) // Ícone se não houver foto
+                            ? const Icon(Icons.person, size: 50) 
                             : null,
                       ),
                     ),
@@ -145,7 +140,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       controller: _bioController,
                       decoration: _buildInputDecoration(label: 'Bio', hint: 'Fale um pouco sobre você e seus esportes!'),
                       maxLines: 3,
-                      maxLength: 150, // Limite de caracteres para a bio
+                      maxLength: 150, 
                     ),
                     const SizedBox(height: 40),
                      ElevatedButton(
@@ -167,7 +162,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // Helper para InputDecoration
   InputDecoration _buildInputDecoration({required String label, String? hint}) {
     return InputDecoration(
       labelText: label,

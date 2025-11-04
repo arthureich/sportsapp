@@ -189,8 +189,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           radius: 50,
            backgroundImage: NetworkImage(user.fotoUrl.isNotEmpty
                ? user.fotoUrl
-               : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'), // Placeholder
-           onBackgroundImageError: (exception, stackTrace) {}, // Ignora erro de imagem
+               : 'https://avatar.iran.liara.run/public/${user.genero}?username=${user.id}'), 
+           onBackgroundImageError: (exception, stackTrace) {},
         ),
         const SizedBox(height: 12),
         Text(
@@ -292,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return ListView.builder(
           padding: const EdgeInsets.all(16.0), 
-          itemCount: myEvents.length,
+          itemCount: filteredEvents.length,
           itemBuilder: (context, index) {
             final event = filteredEvents[index];
             return _ProfileEventCard(
@@ -474,7 +474,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
               }).toList();
 
-              // 8. Retorna o GridView (código idêntico ao que você já tinha)
               return GridView.builder(
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -644,7 +643,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// --- WIDGET DO MODAL DE AVALIAÇÃO (COPIADO DE MY_EVENTS_SCREEN) ---
 class _RatingParticipantTile extends StatefulWidget {
   final LocalUser participant;
   final RatingService ratingService;

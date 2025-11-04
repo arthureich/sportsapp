@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// PASSO 1: Transformar em StatefulWidget
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -19,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final List<String> _selectedSports = [];
   bool _isLoading = false;
 
+  String? _selectedGender; 
+  final List<String> _genders = ['Masculino', 'Feminino'];
   final List<String> _availableSports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Ciclismo', 'Natação', 'Outro'];
 
   @override
@@ -30,9 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // PASSO 3: Mover a lógica de registro para uma função assíncrona
   Future<void> _registerUser() async {
-    // Valida se o formulário está preenchido corretamente
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -42,30 +41,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
+    if (_selectedGender == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecione seu gênero.')),
+      );
+      return;
+    }
     setState(() {
       _isLoading = true; 
     });
 
     try {
-      // Cria o usuário no Firebase Authentication
       final UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Se o usuário foi criado com sucesso, pegamos o ID dele
       final String? userId = userCredential.user?.uid;
 
       if (userId != null) {
-        // Agora, salvamos as informações adicionais no Firestore
+        final genderValue = (_selectedGender == 'Masculino') ? 'boy' : 'girl';
         await FirebaseFirestore.instance.collection('usuarios').doc(userId).set({
           'nome': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'bio': _bioController.text.trim(),
           'esportesInteresse': _selectedSports,
-          'fotoUrl': '', // Deixar em branco ou colocar uma URL de avatar padrão
-          'scoreEsportividade': 5.0, // Um score inicial para o novo usuário
-          'createdAt': FieldValue.serverTimestamp(), // Adiciona a data de criação
+          'fotoUrl': '', 
+          'scoreEsportividade': 5.0, 
+          'createdAt': FieldValue.serverTimestamp(),
+          'fcmTokens': [],
+          'genero': genderValue, 
         });
         await userCredential.user?.updateDisplayName(_nameController.text.trim());
         if (mounted) {
@@ -85,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false; // Finaliza o loading
+          _isLoading = false; 
         });
       }
     }
@@ -163,12 +168,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                    maxLines: 2,
                  ),
                  const SizedBox(height: 20),
-
+                const SizedBox(height: 20),
+                DropdownButtonFormField<String>(
+                  decoration: _buildInputDecoration(label: 'Gênero', icon: Icons.person_search_outlined),
+                  value: _selectedGender,
+                  items: _genders.map((gender) {
+                    return DropdownMenuItem(
+                      value: gender,
+                      child: Text(gender),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedGender = value;
+                    });
+                  },
+                  validator: (value) => value == null ? 'Selecione um gênero.' : null,
+                ),
+                const SizedBox(height: 20),
                  Text('Esportes de Interesse:', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)),
                  const SizedBox(height: 8),
                  Wrap(
-                   spacing: 8.0, // Espaço horizontal entre os chips
-                   runSpacing: 4.0, // Espaço vertical entre as linhas de chips
+                   spacing: 8.0, 
+                   runSpacing: 4.0, 
                    children: _availableSports.map((sport) {
                      final isSelected = _selectedSports.contains(sport);
                      return FilterChip(
@@ -188,7 +210,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                      );
                    }).toList(),
                  ),
-                 // --- FIM NOVA SELEÇÃO DE ESPORTES ---
 
                 const SizedBox(height: 30),
 
@@ -201,7 +222,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // --- Link para Login ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

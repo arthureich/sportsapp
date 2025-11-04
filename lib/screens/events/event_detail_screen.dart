@@ -258,9 +258,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   child: CircleAvatar(
                     backgroundImage: NetworkImage(user.avatarUrl.isNotEmpty
                         ? user.avatarUrl
-                        : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'), // Placeholder
-                     onBackgroundImageError: (exception, stackTrace) {}, // Ignora erros de imagem
-                     radius: 18, // Um pouco menor para caber mais
+                        : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'), // <-- AQUI NÃO MUDA (LocalUser não tem 'genero')
+                     onBackgroundImageError: (exception, stackTrace) {},
+                     radius: 18,
                   ),
                 );
               },

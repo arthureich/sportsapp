@@ -3,7 +3,6 @@ import 'package:flutter_application_1/screens/events/create_event_screen.dart';
 import 'package:flutter_application_1/screens/teams/teams.screen.dart';
 import 'home_content.dart';
 import '../profile/profile_screen.dart'; 
-//import '../events/create_event_screen.dart'; 
 import '../events/my_events_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart'; 
 
@@ -16,7 +15,6 @@ class NewHomeScreen extends StatefulWidget {
 class _NewHomeScreenState extends State<NewHomeScreen> {
   int _selectedIndex = 0;
 
-  // Lista de telas para a navegação
   static const List<Widget> _widgetOptions = <Widget>[
     HomeContent(),
     TeamsScreen(),
@@ -41,9 +39,7 @@ class _NewHomeScreenState extends State<NewHomeScreen> {
     );
   }
 
-  // A BottomAppBar agora vive aqui
   Widget _buildBottomAppBar() {
-    // Labels e Ícones
     final List<String> navBarLabels = ['Início', 'Equipes', 'Meus Eventos', 'Perfil'];
     final List<String> navBarIcons = [
       'assets/icons/home.svg', 

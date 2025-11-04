@@ -9,6 +9,7 @@ class UserModel {
   final double scoreEsportividade;
   final List<String> esportesInteresse;
   final List<String> fcmTokens;
+  final String genero;
 
   UserModel({
     required this.id,
@@ -19,6 +20,7 @@ class UserModel {
     required this.scoreEsportividade,
     required this.esportesInteresse,
     required this.fcmTokens,
+    required this.genero,
   });
 
   factory UserModel.fromSnapshot(DocumentSnapshot snap) {
@@ -26,14 +28,14 @@ class UserModel {
     
     return UserModel(
       id: snap.id,
-      nome: data['nome'] ?? '', // Usa '' como valor padrão se o campo não existir
+      nome: data['nome'] ?? '', 
       email: data['email'] ?? '',
       fotoUrl: data['fotoUrl'] ?? '',
       bio: data['bio'] ?? '',
       scoreEsportividade: (data['scoreEsportividade'] ?? 5.0).toDouble(),
-      // Converte a lista de 'dynamic' do Firestore para uma lista de 'String'
       esportesInteresse: List<String>.from(data['esportesInteresse'] ?? []),
       fcmTokens: List<String>.from(data['fcmTokens'] ?? []),
+      genero: data['genero'] ?? 'boy',
     );
   }
 }
