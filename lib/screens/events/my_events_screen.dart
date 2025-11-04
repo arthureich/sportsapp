@@ -14,7 +14,6 @@ class MyEventsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // Título atualizado
         title: const Text('Próximos Eventos', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         centerTitle: true,
         elevation: 0,
@@ -64,7 +63,6 @@ class MyEventsScreen extends StatelessWidget {
             itemCount: upcomingEvents.length,
             itemBuilder: (context, index) {
               final event = upcomingEvents[index];
-              // Usa o EventCard simples (sem lógica de avaliação)
               return EventCard(event: event);
             },
           );
