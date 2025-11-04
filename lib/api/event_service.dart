@@ -43,7 +43,7 @@ class EventService {
       for (final doc in snapshots) {
         try {
           final event = Event.fromSnapshot(doc);
-          if (event.dateTime.isAfter(now)) {
+          if (event.dateTime.isAfter(now)) { 
             events.add(event);
           }
         } catch (e) {
@@ -56,10 +56,19 @@ class EventService {
     });
   }
 
-  Stream<List<Event>> getEvents() {
+  Stream<List<Event>> getUpcomingEvents() { 
     return _eventsCollection
-        .where('dateTime', isGreaterThanOrEqualTo: Timestamp.now()) 
+        .where('dateTime', isGreaterThanOrEqualTo: Timestamp.now())
         .orderBy('dateTime', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => Event.fromSnapshot(doc)).toList();
+    });
+  }
+
+  Stream<List<Event>> getAllEvents() {
+    return _eventsCollection
+        .orderBy('dateTime', descending: true) 
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) => Event.fromSnapshot(doc)).toList();

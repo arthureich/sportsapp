@@ -22,7 +22,7 @@ class MyEventsScreen extends StatelessWidget {
       ),
       backgroundColor: Colors.grey.shade100,
       body: StreamBuilder<List<Event>>(
-        stream: eventService.getEvents(), 
+        stream: eventService.getAllEvents(), 
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

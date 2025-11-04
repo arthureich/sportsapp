@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'report_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,7 +24,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: ListView(
         children: [
-          // --- Seção Conta ---
           _buildSectionHeader('Conta'),
           _buildSettingsTile(
             icon: Icons.person_outline,
@@ -38,7 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           
-          // --- Seção Notificações ---
           _buildSectionHeader('Notificações'),
           SwitchListTile(
             title: const Text('Novos Eventos', style: TextStyle(fontWeight: FontWeight.w500)),
@@ -65,7 +64,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             activeColor: Colors.green,
           ),
 
-          // --- Seção Sobre ---
           _buildSectionHeader('Sobre'),
           _buildSettingsTile(
             icon: Icons.privacy_tip_outlined,
@@ -78,17 +76,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () {},
           ),
           _buildSettingsTile(
+            icon: Icons.report_problem_outlined,
+            title: 'Reportar Problema',
+            subtitle: 'Ajude-nos a melhorar o app',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ReportScreen()),
+              );
+            },
+          ),
+          _buildSettingsTile(
             icon: Icons.info_outline,
             title: 'Versão do App',
             subtitle: '1.0.0 (Protótipo)',
-            isTappable: false, // Não faz nada ao clicar
+            isTappable: false, 
           ),
         ],
       ),
     );
   }
 
-  // Widget auxiliar para os cabeçalhos de seção
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
@@ -103,7 +111,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Widget auxiliar para os itens da lista
   Widget _buildSettingsTile({
     required IconData icon,
     required String title,

@@ -214,8 +214,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         const SizedBox(height: 20),
-         // A TabBar foi movida para SliverPersistentHeader
-         // const TabBar(...)
       ],
     );
   }
@@ -248,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return StreamBuilder<List<Event>>(
-      stream: _eventService.getEvents(), 
+      stream: _eventService.getAllEvents(), 
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -398,7 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAchievementsTab(UserModel user) {
       final combinedStreams = ZipStream.zip2<List<Event>, List<Team>, List<dynamic>>(
-        _eventService.getEvents(), 
+        _eventService.getAllEvents(), 
         _teamService.getTeams(),   
         (events, teams) => [events, teams],
       );
