@@ -8,7 +8,7 @@ import '../../data/predefined_locations.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart' as event_model;
 
-final kGoogleApiKey = dotenv.env['kGoogleApiKey'] ?? 'fallback_key';
+final kGoogleApiKey = dotenv.env['kGooglePlacesApiKey'] ?? 'fallback_key';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -152,7 +152,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
      }
  }
 
- // 7. NOVA função para selecionar um local pré-definido
  void _selectPredefinedLocation(PredefinedLocation location) {
    if (!mounted) return;
    setState(() {
@@ -219,6 +218,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   }
 
   Future<void> _saveEvent() async {
+    setState(() => _isLoading = true);
+    
     if (!_formKey.currentState!.validate()){return; }
     if (_selectedGeoPoint == null || _locationController.text.isEmpty) { 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecione uma localização válida.')));
@@ -243,6 +244,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final locationAddress = _placeDetails?.formattedAddress ?? (_selectedPredefinedLocation != null ? _selectedPredefinedLocation!.description : '');
 
     setState(() => _isLoading = true);
+    final organizerUser = event_model.LocalUser(id: currentUser.uid, name: currentUser.displayName ?? 'Usuário Anônimo', avatarUrl: currentUser.photoURL ?? '');
+
     final newEvent = event_model.Event(
       id: '', title: _titleController.text, description: _descriptionController.text,
       sport: _selectedSport!,
@@ -253,8 +256,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         coordinates: _selectedGeoPoint!,
       ),
       imageUrl: 'https://images.unsplash.com/photo-1551958214-2d59cc7a2a4a?q=80&w=2071&auto=format&fit=crop',
-      organizer: event_model.LocalUser(id: currentUser.uid, name: currentUser.displayName ?? 'Usuário Anônimo', avatarUrl: currentUser.photoURL ?? ''),
-      participants: [], maxParticipants: 12,
+      organizer: organizerUser,
+      participants: [organizerUser],
+      maxParticipants: 12,
     );
     try {
       await _eventService.addEvent(newEvent);
@@ -263,7 +267,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       Navigator.pop(context);
     } catch (e) { if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao publicar evento.'))); // Mensagem genérica
-      debugPrint("Erro ao salvar evento: $e"); // Log detalhado 
+      debugPrint("Erro ao salvar evento: $e"); 
       }
     finally { if (mounted) setState(() => _isLoading = false); }
   }

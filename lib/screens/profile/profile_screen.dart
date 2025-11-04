@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:flutter_application_1/api/notification_service.dart';
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
@@ -8,6 +9,8 @@ import '../events/event_detail_screen.dart';
 import '../../api/event_service.dart'; 
 import '../../api/user_service.dart'; 
 import '../../api/rating_service.dart';
+import '../../api/team_service.dart'; 
+import '../../models/team_model.dart';
 import '../../models/rating_model.dart';
 import '../../models/user_model.dart'; 
 import '../../models/event_model.dart'; 
@@ -29,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; 
 
   final RatingService _ratingService = RatingService();
+  final TeamService _teamService = TeamService();
   bool _isRating = false;
 
   Future<void> _onMenuOptionSelected(BuildContext context, ProfileMenuOption option) async {
@@ -238,7 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
      );
    }
 
-Widget _buildMyEventsList({required bool isUpcoming}) {
+  Widget _buildMyEventsList({required bool isUpcoming}) {
     if (_currentUserId == null) {
       return const Center(child: Text('Faça login para ver seus eventos.'));
     }
@@ -290,10 +294,10 @@ Widget _buildMyEventsList({required bool isUpcoming}) {
           padding: const EdgeInsets.all(16.0), 
           itemCount: myEvents.length,
           itemBuilder: (context, index) {
-            final event = myEvents[index];
+            final event = filteredEvents[index];
             return _ProfileEventCard(
               event: event, 
-              isPast: !isUpcoming, // Se NÃO é 'upcoming', é 'past'
+              isPast: !isUpcoming, 
               onRatePressed: () {
                 _showRatingModal(event);
               },
@@ -389,135 +393,167 @@ Widget _buildMyEventsList({required bool isUpcoming}) {
       if(mounted) setState(() => _isRating = false);
     }
   }
-}
 
 
-Widget _buildAchievementsTab(UserModel user) {
-    final List<Achievement> allAchievements = [
-      Achievement(
-        title: "Bom de Bola",
-        description: "Participe do seu primeiro evento de Futebol.",
-        icon: Icons.sports_soccer,
-      ),
-      Achievement(
-        title: "Bom Espírito",
-        description: "Receba uma avaliação de 4.5 estrelas ou mais.",
-        icon: Icons.sentiment_very_satisfied,
-      ),
-      Achievement(
-        title: "Popular",
-        description: "Receba 10 avaliações no total.",
-        icon: Icons.star_rate,
-      ),
-      Achievement(
-        title: "Organizador",
-        description: "Crie seu primeiro evento.",
-        icon: Icons.edit_calendar,
-      ),
-      Achievement(
-        title: "Veterano",
-        description: "Participe de 5 eventos.",
-        icon: Icons.military_tech,
-      ),
-      Achievement(
-        title: "Membro de Equipe",
-        description: "Entre para sua primeira equipe.",
-        icon: Icons.group,
-      ),
-    ];
 
-    final List<Achievement> processedAchievements = allAchievements.map((ach) {
-      bool unlocked = false;
-      if (ach.title == "Bom Espírito") {
-        unlocked = user.scoreEsportividade >= 4.5;
-      }
-      // TODO: Adicionar lógica para as outras conquistas
-      // (Ex: fazer um count em 'eventos' onde o user é participante/organizador)
-      
-      return Achievement(
-        title: ach.title,
-        description: ach.description,
-        icon: ach.icon,
-        isUnlocked: unlocked,
+  Widget _buildAchievementsTab(UserModel user) {
+      final combinedStreams = ZipStream.zip2<List<Event>, List<Team>, List<dynamic>>(
+        _eventService.getEvents(), 
+        _teamService.getTeams(),   
+        (events, teams) => [events, teams],
       );
-    }).toList();
 
+      return StreamBuilder<List<dynamic>>(
+        stream: combinedStreams,
+        builder: (context, streamSnapshot) {
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, 
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 1.0, 
-      ),
-      itemCount: processedAchievements.length,
-      itemBuilder: (context, index) {
-        final ach = processedAchievements[index];
-        final color = ach.isUnlocked ? Colors.orangeAccent : Colors.grey[300];
-        final iconColor = ach.isUnlocked ? Colors.white : Colors.grey[600];
+          return FutureBuilder<List<Rating>>(
+            future: _ratingService.getRatingsForUser(user.id),
+            builder: (context, ratingSnapshot) {
 
-        return Card(
-          elevation: ach.isUnlocked ? 4 : 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: ach.isUnlocked ? Colors.orange.shade100 : Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: color,
-                  child: Icon(ach.icon, color: iconColor, size: 30),
+              if (!streamSnapshot.hasData || !ratingSnapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final List<Event> allEvents = streamSnapshot.data![0];
+              final List<Team> allTeams = streamSnapshot.data![1];
+              final List<Rating> allRatingsReceived = ratingSnapshot.data!;
+              final now = DateTime.now();
+
+              final myPastEvents = allEvents.where((event) =>
+                  event.dateTime.isBefore(now) &&
+                  (event.organizer.id == user.id || 
+                  event.participants.any((p) => p.id == user.id))
+              ).toList();
+
+              final myCreatedEvents = allEvents.where(
+                  (event) => event.organizer.id == user.id
+              ).toList();
+
+              final myTeams = allTeams.where(
+                  (team) => team.memberIds.contains(user.id)
+              ).toList();
+
+              final List<Achievement> allAchievements = [
+                Achievement(title: "Bom Espírito", description: "Receba uma avaliação de 4.5 estrelas ou mais.", icon: Icons.sentiment_very_satisfied),
+                Achievement(title: "Popular", description: "Receba 10 avaliações no total.", icon: Icons.star_rate),
+                Achievement(title: "Organizador", description: "Crie seu primeiro evento.", icon: Icons.edit_calendar),
+                Achievement(title: "Bom de Bola", description: "Participe de um evento de Futebol.", icon: Icons.sports_soccer),
+                Achievement(title: "Veterano", description: "Participe de 5 eventos.", icon: Icons.military_tech),
+                Achievement(title: "Membro de Equipe", description: "Entre para sua primeira equipe.", icon: Icons.group),
+              ];
+
+              final List<Achievement> processedAchievements = allAchievements.map((ach) {
+                bool unlocked = false;
+                switch (ach.title) {
+                  case "Bom Espírito":
+                    unlocked = user.scoreEsportividade >= 4.5;
+                    break;
+                  case "Popular":
+                    unlocked = allRatingsReceived.length >= 10;
+                    break;
+                  case "Organizador":
+                    unlocked = myCreatedEvents.isNotEmpty;
+                    break;
+                  case "Bom de Bola":
+                    unlocked = myPastEvents.any((event) => event.sport == 'Futebol');
+                    break;
+                  case "Veterano":
+                    unlocked = myPastEvents.length >= 5;
+                    break;
+                  case "Membro de Equipe":
+                    unlocked = myTeams.isNotEmpty;
+                    break;
+                }
+                
+                return Achievement(
+                  title: ach.title,
+                  description: ach.description,
+                  icon: ach.icon,
+                  isUnlocked: unlocked,
+                );
+              }).toList();
+
+              // 8. Retorna o GridView (código idêntico ao que você já tinha)
+              return GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, 
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.0, 
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  ach.title, 
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  ach.description,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+                itemCount: processedAchievements.length,
+                itemBuilder: (context, index) {
+                  final ach = processedAchievements[index];
+                  final color = ach.isUnlocked ? Colors.orangeAccent : Colors.grey[300];
+                  final iconColor = ach.isUnlocked ? Colors.white : Colors.grey[600];
+
+                  return Card(
+                    elevation: ach.isUnlocked ? 4 : 1,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    color: ach.isUnlocked ? Colors.orange.shade100 : Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 25,
+                            backgroundColor: color,
+                            child: Icon(ach.icon, color: iconColor, size: 30),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            ach.title, 
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            ach.description,
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+    }
   }
+  class StatItem extends StatelessWidget {
+    final String count;
+    final String label;
+    const StatItem({super.key, required this.count, required this.label});
 
- class StatItem extends StatelessWidget {
-   final String count;
-   final String label;
-   const StatItem({super.key, required this.count, required this.label});
+    @override
+    Widget build(BuildContext context) {
+      return Column(
+        children: [
+          Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+        ],
+      );
+    }
+  }
+  class _ProfileEventCard extends StatelessWidget {
+    final Event event;
+    final bool isPast;
+    final VoidCallback onRatePressed;
 
-   @override
-   Widget build(BuildContext context) {
-     return Column(
-       children: [
-         Text(count, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-         Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-       ],
-     );
-   }
- }
-class _ProfileEventCard extends StatelessWidget {
-  final Event event;
-  final bool isPast;
-  final VoidCallback onRatePressed;
-
-  const _ProfileEventCard({
-    required this.event,
-    required this.isPast,
-    required this.onRatePressed,
-  });
+    const _ProfileEventCard({
+      required this.event,
+      required this.isPast,
+      required this.onRatePressed,
+    });
 
   @override
   Widget build(BuildContext context) {
