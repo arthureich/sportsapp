@@ -73,6 +73,10 @@ class Event {
   final LocalUser organizer;
   final List<LocalUser> participants;
   final int maxParticipants;
+  final String skillLevel; 
+  final bool isPrivate;    
+  final List<LocalUser> pendingParticipants;
+  
 
   Event({
     required this.id,
@@ -85,6 +89,9 @@ class Event {
     required this.organizer,
     required this.participants,
     required this.maxParticipants,
+    required this.skillLevel,
+    required this.isPrivate,
+    required this.pendingParticipants,
   });
 
   Map<String, dynamic> toJson() => {
@@ -97,6 +104,9 @@ class Event {
         'organizer': organizer.toJson(),
         'participants': participants.map((p) => p.toJson()).toList(),
         'maxParticipants': maxParticipants,
+        'skillLevel': skillLevel,
+        'isPrivate': isPrivate,
+        'pendingParticipants': pendingParticipants.map((p) => p.toJson()).toList(),
         'geo': GeoFirePoint(location.coordinates).data,
       };
 
@@ -108,13 +118,18 @@ class Event {
     }
 
     try {
-      final participantsData = data['participants'];
-      List<LocalUser> participantsList = [];
-      if (participantsData is List) {
-        participantsList = participantsData
-            .map((p) => LocalUser.fromJson(p as Map<String, dynamic>))
-            .toList();
+      // Função helper para converter listas de participantes
+      List<LocalUser> _parseParticipants(dynamic listData) {
+        if (listData is List) {
+          return listData
+              .map((p) => LocalUser.fromJson(p as Map<String, dynamic>))
+              .toList();
+        }
+        return [];
       }
+
+      final participantsList = _parseParticipants(data['participants']);
+      final pendingList = _parseParticipants(data['pendingParticipants']);
 
       DateTime dateTime;
       if (data['dateTime'] is Timestamp) {
@@ -134,6 +149,9 @@ class Event {
         organizer: LocalUser.fromJson(data['organizer'] as Map<String, dynamic>?),
         participants: participantsList,
         maxParticipants: _getOrDefault(data, 'maxParticipants', 0),
+        skillLevel: _getOrDefault(data, 'skillLevel', 'Todos'), 
+        isPrivate: _getOrDefault(data, 'isPrivate', false),     
+        pendingParticipants: pendingList,
       );
     } catch (e) {
       debugPrint('ERRO CRÍTICO ao converter o documento ${snapshot.id}: $e');

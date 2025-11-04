@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/event_model.dart';
@@ -71,20 +70,58 @@ class EventService {
     return _eventsCollection.doc(eventId).snapshots();
   }
   Future<void> addEvent(Event event) async {
-  try {
-    await _eventsCollection.add(event.toJson());
-  } catch (e) {
-    if (kDebugMode) {
-      print("Erro ao adicionar evento: $e");
+    try {
+      await _eventsCollection.add(event.toJson()); 
+    } catch (e) {
+      if (kDebugMode) {
+        print("Erro CRÍTICO ao adicionar evento: $e");
+      }
+      rethrow; 
     }
-    // ----- ESTAS LINHAS CAUSAM O LOADING INFINITO -----
-    final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    throw Exception("Usuário não autenticado para criar um evento.");
   }
-   await _eventsCollection.add(event.toJson()); // <-- TENTA ADICIONAR DE NOVO
-}
-}
+
+  Future<void> updateEvent(String eventId, Map<String, dynamic> data) async {
+    try {
+      await _eventsCollection.doc(eventId).update(data);
+    } catch (e) {
+      debugPrint("Erro ao atualizar evento: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> deleteEvent(String eventId) async {
+    try {
+      await _eventsCollection.doc(eventId).delete();
+    } catch (e) {
+      debugPrint("Erro ao deletar evento: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> requestToJoinEvent(String eventId, LocalUser user) async {
+    try {
+      await _eventsCollection.doc(eventId).update({
+        'pendingParticipants': FieldValue.arrayUnion([user.toJson()])
+      });
+    } catch (e) {
+      debugPrint("Erro ao solicitar entrada: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> approveParticipant(String eventId, LocalUser userToApprove) async {
+    try {
+      // Remove da lista de pendentes E adiciona na lista de participantes
+      // em uma única transação
+      await _eventsCollection.doc(eventId).update({
+        'pendingParticipants': FieldValue.arrayRemove([userToApprove.toJson()]),
+        'participants': FieldValue.arrayUnion([userToApprove.toJson()])
+      });
+    } catch (e) {
+      debugPrint("Erro ao aprovar participante: $e");
+      rethrow;
+    }
+  }
 
   Future<void> joinEvent(String eventId, LocalUser user) async {
     try {

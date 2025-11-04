@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:google_maps_apis/places.dart';
 import '../../data/predefined_locations.dart';
 import '../../api/event_service.dart';
@@ -11,7 +12,8 @@ import '../../models/event_model.dart' as event_model;
 final kGoogleApiKey = dotenv.env['kGooglePlacesApiKey'] ?? 'fallback_key';
 
 class CreateEventScreen extends StatefulWidget {
-  const CreateEventScreen({super.key});
+  final event_model.Event? eventToEdit;
+  const CreateEventScreen({super.key, this.eventToEdit});
 
   @override
   State<CreateEventScreen> createState() => _CreateEventScreenState();
@@ -38,8 +40,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   List<PredefinedLocation> _filteredPredefinedLocations = [];
   String? _sessionToken;
   Timer? _debounce;
-
+  String _selectedSkillLevel = 'Todos'; 
+  bool _isPrivate = false; 
+  bool get _isEditMode => widget.eventToEdit != null;
   final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida'];
+  final List<String> _skillLevels = ['Todos', 'Iniciante', 'Intermediário', 'Avançado'];
   final EventService _eventService = EventService();
 
   @override
@@ -49,8 +54,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _generateSessionToken();
     _filteredPredefinedLocations = [];
    _locationController.addListener(_onSearchChanged);
+  if (_isEditMode) {
+      final event = widget.eventToEdit!;
+      _titleController.text = event.title;
+      _descriptionController.text = event.description;
+      _locationController.text = event.location.name;
+      _selectedDate = event.dateTime;
+      _selectedTime = TimeOfDay.fromDateTime(event.dateTime);
+      _selectedSport = event.sport;
+      _selectedGeoPoint = event.location.coordinates;
+      _selectedSkillLevel = event.skillLevel;
+      _isPrivate = event.isPrivate;
+    }
   }
-
   void _generateSessionToken() {
     _sessionToken = DateTime.now().microsecondsSinceEpoch.toString();
      debugPrint("Novo Session Token: $_sessionToken");
@@ -219,7 +235,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   Future<void> _saveEvent() async {
     setState(() => _isLoading = true);
-    
     if (!_formKey.currentState!.validate()){return; }
     if (_selectedGeoPoint == null || _locationController.text.isEmpty) { 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecione uma localização válida.')));
@@ -244,32 +259,67 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final locationAddress = _placeDetails?.formattedAddress ?? (_selectedPredefinedLocation != null ? _selectedPredefinedLocation!.description : '');
 
     setState(() => _isLoading = true);
-    final organizerUser = event_model.LocalUser(id: currentUser.uid, name: currentUser.displayName ?? 'Usuário Anônimo', avatarUrl: currentUser.photoURL ?? '');
 
-    final newEvent = event_model.Event(
-      id: '', title: _titleController.text, description: _descriptionController.text,
-      sport: _selectedSport!,
-      dateTime: DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedTime!.hour, _selectedTime!.minute),
-      location: event_model.Location(
-        name: locationName,
-        address: locationAddress,
-        coordinates: _selectedGeoPoint!,
-      ),
-      imageUrl: 'https://images.unsplash.com/photo-1551958214-2d59cc7a2a4a?q=80&w=2071&auto=format&fit=crop',
-      organizer: organizerUser,
-      participants: [organizerUser],
-      maxParticipants: 12,
-    );
-    try {
-      await _eventService.addEvent(newEvent);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Evento publicado com sucesso!')));
-      Navigator.pop(context);
-    } catch (e) { if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao publicar evento.'))); // Mensagem genérica
-      debugPrint("Erro ao salvar evento: $e"); 
+    if (_isEditMode) {
+      final Map<String, dynamic> updatedData = {
+        'title': _titleController.text,
+        'description': _descriptionController.text,
+        'sport': _selectedSport!,
+        'dateTime': Timestamp.fromDate(DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedTime!.hour, _selectedTime!.minute)),
+        'location': event_model.Location(
+          name: locationName,
+          address: locationAddress,
+          coordinates: _selectedGeoPoint!,
+        ).toJson(),
+        'geo': GeoFirePoint(_selectedGeoPoint!).data, 
+        'skillLevel': _selectedSkillLevel,
+        'isPrivate': _isPrivate,
+      };
+
+      try {
+        await _eventService.updateEvent(widget.eventToEdit!.id, updatedData);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Evento atualizado com sucesso!')));
+        Navigator.pop(context); // Volta para a tela de detalhes
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao atualizar evento.')));
       }
-    finally { if (mounted) setState(() => _isLoading = false); }
+
+    } else {
+      final organizerUser = event_model.LocalUser(id: currentUser.uid, name: currentUser.displayName ?? 'Usuário Anônimo', avatarUrl: currentUser.photoURL ?? '');
+      
+      final newEvent = event_model.Event(
+        id: '', title: _titleController.text, description: _descriptionController.text,
+        sport: _selectedSport!,
+        dateTime: DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedTime!.hour, _selectedTime!.minute),
+        location: event_model.Location(
+          name: locationName,
+          address: locationAddress,
+          coordinates: _selectedGeoPoint!,
+        ),
+        imageUrl: 'https://images.unsplash.com/photo-1551958214-2d59cc7a2a4a?q=80&w=2071&auto=format&fit=crop',
+        organizer: organizerUser,
+        participants: [organizerUser], 
+        maxParticipants: 12,
+        skillLevel: _selectedSkillLevel,
+        isPrivate: _isPrivate,
+        pendingParticipants: [], 
+      );
+      
+      try {
+        await _eventService.addEvent(newEvent);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Evento publicado com sucesso!')));
+        Navigator.pop(context);
+      } catch (e) { 
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao publicar evento.'))); 
+        debugPrint("Erro ao salvar evento: $e");
+      } finally { 
+        if (mounted) setState(() => _isLoading = false); 
+      }
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -286,11 +336,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final combinedListLength = _filteredPredefinedLocations.length + _apiPredictions.length;
     final bool showSuggestions = (_filteredPredefinedLocations.isNotEmpty || _apiPredictions.isNotEmpty) && !_isDetailsLoading;
     return Scaffold(
-      appBar: AppBar(title: const Text('Criar Novo Evento'), centerTitle: true),
+      appBar: AppBar(title: Text(_isEditMode ? 'Editar Evento' : 'Criar Novo Evento'), centerTitle: true),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
-          // Se o foco não está no campo de localização, esconde sugestões
           FocusScope.of(context).unfocus();
           if (_filteredPredefinedLocations.isNotEmpty || _apiPredictions.isNotEmpty) {
             setState(() {
@@ -318,18 +367,30 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 20),
-              // --- Esporte ---
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Esporte', border: OutlineInputBorder()),
                 value: _selectedSport,
-                // **CORREÇÃO AQUI**
                 items: _sports.map((String sport) => DropdownMenuItem<String>(value: sport, child: Text(sport))).toList(),
                 onChanged: (newValue) => setState(() => _selectedSport = newValue),
                 validator: (value) => value == null ? 'Selecione um esporte' : null,
               ),
               const SizedBox(height: 20),
-
-              // --- CAMPO DE LOCALIZAÇÃO E LISTA DE SUGESTÕES ---
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: 'Nível de Habilidade', border: OutlineInputBorder()),
+                value: _selectedSkillLevel,
+                items: _skillLevels.map((String level) => DropdownMenuItem<String>(value: level, child: Text(level))).toList(),
+                onChanged: (newValue) => setState(() => _selectedSkillLevel = newValue ?? 'Todos'),
+                validator: (value) => value == null ? 'Selecione um nível' : null,
+              ),
+              const SizedBox(height: 20),
+              SwitchListTile(
+                title: const Text('Evento Privado'),
+                subtitle: const Text('Participantes precisarão da sua aprovação para entrar.'),
+                value: _isPrivate,
+                onChanged: (newValue) => setState(() => _isPrivate = newValue),
+                activeColor: Colors.orangeAccent,
+              ),
+              const SizedBox(height: 20),
               TextField(
                   controller: _locationController,
                   decoration: InputDecoration(
@@ -342,7 +403,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                         : const Icon(Icons.search),
                   ),
                   onTap: () {
-                    // Não recolhe sugestões ao clicar no campo de localização
                   },
               ),
               if (showSuggestions)
@@ -416,7 +476,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ],
               ),
               const SizedBox(height: 40),
-              // --- Botão Salvar ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -426,8 +485,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                   ),
-                  onPressed: _isLoading ? null : _saveEvent, // Função definida
-                  child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('PUBLICAR EVENTO', style: TextStyle(fontSize: 16)),
+                  onPressed: _isLoading ? null : _saveEvent,
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : Text(_isEditMode ? 'SALVAR ALTERAÇÕES' : 'PUBLICAR EVENTO', style: const TextStyle(fontSize: 16)),
                 ),
               ),
             ],
