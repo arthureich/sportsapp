@@ -47,13 +47,11 @@ class _HomeContentState extends State<HomeContent> {
         Marker(
           markerId: MarkerId('loc_${loc.name}'), // ID único
           position: LatLng(loc.coordinates.latitude, loc.coordinates.longitude),
-          // Ícone verde para diferenciar
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen), 
           infoWindow: InfoWindow(
             title: loc.name,
             snippet: "Clique para ver detalhes do local",
             onTap: () {
-              // --- 6. NAVEGA PARA A NOVA TELA ---
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) => PredefinedLocationDetailScreen(location: loc),
               ));
