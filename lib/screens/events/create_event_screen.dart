@@ -331,7 +331,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           address: locationAddress,
           coordinates: _selectedGeoPoint!,
         ),
-        imageUrl: 'https://images.unsplash.com/photo-1551958214-2d59cc7a2a4a?q=80&w=2071&auto=format&fit=crop',
+        imageUrl: 'https://cdn-icons-png.flaticon.com/512/11438/11438126.png',
         organizer: organizerUser,
         participants: [organizerUser], 
         maxParticipants: 12,

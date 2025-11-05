@@ -68,7 +68,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
            ScaffoldMessenger.of(context).showSnackBar(
              const SnackBar(content: Text('Você entrou no evento!')),
            );
-           setState(() { // Atualiza estado local imediatamente
+           setState(() { 
              _isCurrentUserParticipant = true;
            });
          }
@@ -283,7 +283,7 @@ Widget _buildBottomButton(Event event, bool isFull) {
     }
 
     return ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
+      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
       onPressed: _isLoading ? null : () => _toggleParticipation(event),
       child: _isLoading 
         ? const CircularProgressIndicator(color: Colors.white) 

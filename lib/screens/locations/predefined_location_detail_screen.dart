@@ -4,7 +4,6 @@ import 'package:flutter_application_1/data/predefined_locations.dart';
 import 'package:flutter_application_1/models/event_model.dart';
 import 'package:flutter_application_1/screens/events/create_event_screen.dart';
 import 'package:flutter_application_1/screens/events/event_detail_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class PredefinedLocationDetailScreen extends StatefulWidget {
   final PredefinedLocation location;
@@ -35,7 +34,7 @@ class _PredefinedLocationDetailScreenState extends State<PredefinedLocationDetai
         },
         icon: const Icon(Icons.add),
         label: const Text('Criar Evento Aqui'),
-        backgroundColor: Colors.orangeAccent,
+        backgroundColor: Colors.green,
       ),
       body: CustomScrollView(
         slivers: [

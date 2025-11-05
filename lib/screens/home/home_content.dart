@@ -26,43 +26,16 @@ class _HomeContentState extends State<HomeContent> {
   bool _isLoadingLocation = true;
   String? _locationError;
   GoogleMapController? _mapController;
-  final double _searchRadiusKm = 20.0;
   DateTime? _filterDate;
   double _filterDistance = 20.0;
   bool _filterHasVacancies = false;
   TimeOfDay? _filterTime;
-  Set<Marker> _predefinedLocationMarkers = {};
+  final double _searchRadiusKm = 25.0;
 
   @override
   void initState() {
     super.initState();
     _fetchLocationAndLoadEvents();
-    _loadPredefinedLocationMarkers();
-  }
-
-  void _loadPredefinedLocationMarkers() {
-    final markers = <Marker>{};
-    for (final loc in predefinedLocationsCascavel) {
-      markers.add(
-        Marker(
-          markerId: MarkerId('loc_${loc.name}'), // ID único
-          position: LatLng(loc.coordinates.latitude, loc.coordinates.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen), 
-          infoWindow: InfoWindow(
-            title: loc.name,
-            snippet: "Clique para ver detalhes do local",
-            onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => PredefinedLocationDetailScreen(location: loc),
-              ));
-            },
-          ),
-        ),
-      );
-    }
-    setState(() {
-      _predefinedLocationMarkers = markers;
-    });
   }
 
   Future<void> _fetchLocationAndLoadEvents() async {
@@ -84,7 +57,7 @@ class _HomeContentState extends State<HomeContent> {
         _mapController?.animateCamera(
           CameraUpdate.newLatLngZoom(
             LatLng(position.latitude, position.longitude),
-            13, // Zoom
+            13,
           ),
         );
       });
@@ -101,7 +74,7 @@ class _HomeContentState extends State<HomeContent> {
               timestamp: DateTime.now(), accuracy: 0, altitude: 0, 
               altitudeAccuracy: 0, heading: 0, headingAccuracy: 0, speed: 0, speedAccuracy: 0
             ), 
-            _searchRadiusKm
+            _filterDistance
          ).asBroadcastStream();
       });
     }
@@ -160,18 +133,26 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildMap() {
+    final Map<String, PredefinedLocation> predefinedLocationMap = {
+      for (var loc in predefinedLocationsCascavel) 
+        '${loc.coordinates.latitude.toStringAsFixed(5)},${loc.coordinates.longitude.toStringAsFixed(5)}': loc
+    };
     if (_eventsStream == null) {
+      final Set<Marker> greenMarkers = predefinedLocationsCascavel.map((loc) {
+        return _createLocationMarker(loc, false); 
+      }).toSet();
       return GoogleMap(
           initialCameraPosition: const CameraPosition(target: _initialPosition, zoom: 13),
           onMapCreated: (controller) => _mapController = controller,
-          markers: _predefinedLocationMarkers,
+          markers: greenMarkers,
       );
     }
     
     return StreamBuilder<List<Event>>(
       stream: _eventsStream,
       builder: (context, snapshot) {
-        Set<Marker> eventMarkers = {};
+        Set<String> locationsWithEvents = {};
+        Set<Marker> markersToShow = {};
         if (snapshot.hasData) {
           final allEvents = snapshot.data!;
           final filteredEvents = (_selectedSport == 'Todos')
@@ -179,28 +160,26 @@ class _HomeContentState extends State<HomeContent> {
               : allEvents
                   .where((event) => event.sport == _selectedSport)
                   .toList();
-        eventMarkers = filteredEvents.map((event) {
-            return Marker(
-              markerId: MarkerId(event.id),
-              position: LatLng(
+        for (final event in filteredEvents) {
+            final eventPosition = LatLng(
                 event.location.coordinates.latitude,
                 event.location.coordinates.longitude,
-              ),
-              infoWindow: InfoWindow(
-                title: event.title,
-                snippet: event.location.name,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => EventDetailScreen(event: event),
-                    ),
-                  );
-                },
-              ),
-            );
-          }).toSet();
+              );
+            final eventPosKey = '${eventPosition.latitude.toStringAsFixed(5)},${eventPosition.longitude.toStringAsFixed(5)}';
+            if (predefinedLocationMap.containsKey(eventPosKey)) {
+              final loc = predefinedLocationMap[eventPosKey]!;
+              markersToShow.add(_createLocationMarker(loc, true)); // true = com evento
+              locationsWithEvents.add(loc.name); 
+            } else {
+              markersToShow.add(_createEventMarker(event));
+            }
+          }
         }
-
+        for (final loc in predefinedLocationsCascavel) {
+          if (!locationsWithEvents.contains(loc.name)) {
+            markersToShow.add(_createLocationMarker(loc, false)); 
+          }
+        }
         return GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _currentPosition != null 
@@ -209,11 +188,54 @@ class _HomeContentState extends State<HomeContent> {
             zoom: 13,
           ),
           onMapCreated: (controller) => _mapController = controller,
-          markers: eventMarkers.union(_predefinedLocationMarkers),
+          markers: markersToShow,
           myLocationEnabled: true,
           myLocationButtonEnabled: true,
         );
       },
+    );
+  }
+
+  Marker _createEventMarker(Event event) {
+    return Marker(
+      markerId: MarkerId(event.id),
+      position: LatLng(
+        event.location.coordinates.latitude,
+        event.location.coordinates.longitude,
+      ),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), 
+      infoWindow: InfoWindow(
+        title: event.title,
+        snippet: "Clique para ver detalhes do evento",
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => EventDetailScreen(event: event),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Marker _createLocationMarker(PredefinedLocation loc, bool hasEvent) {
+    return Marker(
+      markerId: MarkerId('loc_${loc.name}'),
+      position: LatLng(loc.coordinates.latitude, loc.coordinates.longitude),
+      icon: BitmapDescriptor.defaultMarkerWithHue(
+        hasEvent ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueGreen
+      ),
+      infoWindow: InfoWindow(
+        title: loc.name,
+        snippet: hasEvent 
+          ? "Local com eventos! Clique para ver." 
+          : "Local livre. Clique para ver.",
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => PredefinedLocationDetailScreen(location: loc),
+          ));
+        },
+      ),
     );
   }
 

@@ -80,7 +80,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
         currentMembers: 1, 
         maxMembers: _maxMembers.toInt(),
         isPublic: _isPublic,
-        memberIds: [currentUser!.uid],
+        memberIds: [currentUser.uid],
       );
 
     await _teamService.addTeam(newTeam);
