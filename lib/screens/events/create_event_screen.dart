@@ -29,6 +29,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
+  final _otherSportController = TextEditingController();
   bool _isLoading = false;
   bool _isPredictionLoading = false;
   bool _isDetailsLoading = false;
@@ -49,9 +50,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   List<PredefinedLocation> _filteredPredefinedLocations = [];
 
   late GoogleMapsPlaces _places;
-  final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida'];
+  final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Outro'];
   final List<String> _skillLevels = ['Todos', 'Iniciante', 'Intermediário', 'Avançado'];
   final EventService _eventService = EventService();
+  bool _showOtherSportField = false;
 
   @override
   void initState() {
@@ -67,7 +69,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       _locationController.text = event.location.name;
       _selectedDate = event.dateTime;
       _selectedTime = TimeOfDay.fromDateTime(event.dateTime);
-      _selectedSport = event.sport;
+      if (_sports.contains(event.sport)) {
+        _selectedSport = event.sport;
+      } else {
+      _selectedSport = 'Outro';
+        _showOtherSportField = true;
+        _otherSportController.text = event.sport;
+      }
       _selectedGeoPoint = event.location.coordinates;
       _selectedSkillLevel = event.skillLevel;
       _isPrivate = event.isPrivate;
@@ -90,6 +98,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _descriptionController.dispose();
     _locationController.removeListener(_onSearchChanged);
     _locationController.dispose();
+    _otherSportController.dispose();
     _debounce?.cancel();
     _places.dispose();
     super.dispose();
@@ -269,14 +278,26 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
        return; }
     final locationName = _selectedPredefinedLocation?.name ?? _placeDetails?.name ?? _locationController.text;
     final locationAddress = _placeDetails?.formattedAddress ?? (_selectedPredefinedLocation != null ? _selectedPredefinedLocation!.description : '');
-
     setState(() => _isLoading = true);
+    final String sportName;
+    if (_selectedSport == 'Outro') {
+      sportName = _otherSportController.text.trim();
+    } else {
+      sportName = _selectedSport!;
+    }
+    if (sportName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, insira o nome do esporte.')),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
 
     if (_isEditMode) {
       final Map<String, dynamic> updatedData = {
         'title': _titleController.text,
         'description': _descriptionController.text,
-        'sport': _selectedSport!,
+        'sport': sportName,
         'dateTime': Timestamp.fromDate(DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedTime!.hour, _selectedTime!.minute)),
         'location': event_model.Location(
           name: locationName,
@@ -292,18 +313,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         await _eventService.updateEvent(widget.eventToEdit!.id, updatedData);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Evento atualizado com sucesso!')));
-        Navigator.pop(context); // Volta para a tela de detalhes
+        Navigator.pop(context); 
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao atualizar evento.')));
       }
 
     } else {
+      final currentUser = FirebaseAuth.instance.currentUser!;
       final organizerUser = event_model.LocalUser(id: currentUser.uid, name: currentUser.displayName ?? 'Usuário Anônimo', avatarUrl: currentUser.photoURL ?? '');
-      
       final newEvent = event_model.Event(
         id: '', title: _titleController.text, description: _descriptionController.text,
-        sport: _selectedSport!,
+        sport: sportName,
         dateTime: DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedTime!.hour, _selectedTime!.minute),
         location: event_model.Location(
           name: locationName,
@@ -383,9 +404,28 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 decoration: const InputDecoration(labelText: 'Esporte', border: OutlineInputBorder()),
                 value: _selectedSport,
                 items: _sports.map((String sport) => DropdownMenuItem<String>(value: sport, child: Text(sport))).toList(),
-                onChanged: (newValue) => setState(() => _selectedSport = newValue),
+                onChanged: (newValue) {
+                  setState(() {
+                    _selectedSport = newValue;
+                    _showOtherSportField = (newValue == 'Outro');
+                  });
+                },
                 validator: (value) => value == null ? 'Selecione um esporte' : null,
               ),
+              if (_showOtherSportField)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: TextFormField(
+                    controller: _otherSportController,
+                    decoration: const InputDecoration(labelText: 'Nome do Esporte', hintText: 'Ex: Padel, Tênis de Mesa', border: OutlineInputBorder()),
+                    validator: (value) {
+                      if (_showOtherSportField && (value == null || value.isEmpty)) {
+                        return 'Por favor, insira o nome do esporte.';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Nível de Habilidade', border: OutlineInputBorder()),
@@ -393,14 +433,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 items: _skillLevels.map((String level) => DropdownMenuItem<String>(value: level, child: Text(level))).toList(),
                 onChanged: (newValue) => setState(() => _selectedSkillLevel = newValue ?? 'Todos'),
                 validator: (value) => value == null ? 'Selecione um nível' : null,
-              ),
-              const SizedBox(height: 20),
-              SwitchListTile(
-                title: const Text('Evento Privado'),
-                subtitle: const Text('Participantes precisarão da sua aprovação para entrar.'),
-                value: _isPrivate,
-                onChanged: (newValue) => setState(() => _isPrivate = newValue),
-                activeColor: Colors.orangeAccent,
               ),
               const SizedBox(height: 20),
               TextField(
@@ -430,21 +462,17 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                      shrinkWrap: true,
                      itemCount: combinedListLength,
                      itemBuilder: (context, index) {
-                       // Decide se mostra um item pré-definido ou da API
                        if (index < _filteredPredefinedLocations.length) {
-                         // Item Pré-definido
                          final location = _filteredPredefinedLocations[index];
                          return ListTile(
                            leading: const Icon(Icons.star_border, size: 20, color: Colors.orangeAccent),
                            title: Text(location.name),
                            subtitle: Text(location.description),
                            dense: true,
-                           onTap: () => _handleSelection(location), // Chama a função genérica
+                           onTap: () => _handleSelection(location), 
                          );
                        } else {
-                         // Item da API
                          final apiIndex = index - _filteredPredefinedLocations.length;
-                         // Proteção extra caso a lista mude durante o build
                          if (apiIndex >= _apiPredictions.length) return const SizedBox.shrink();
                          final prediction = _apiPredictions[apiIndex];
                          return ListTile(
@@ -452,22 +480,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                            title: Text(prediction.structuredFormatting?.mainText ?? prediction.description ?? ''),
                            subtitle: Text(prediction.structuredFormatting?.secondaryText ?? ''),
                            dense: true,
-                           onTap: () => _handleSelection(prediction), // Chama a função genérica
+                           onTap: () => _handleSelection(prediction), 
                          );
                        }
                      },
                    ),
                  ),
                ),
-             // Preview opcional
              if (_selectedGeoPoint != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text("Selecionado: ${_locationController.text}", style: TextStyle(color: Colors.grey[600])),
                 ),
              const SizedBox(height: 20),
-
-              // --- Data e Hora ---
               Row(
                 children: [
                   Expanded(
@@ -492,11 +517,19 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 ],
               ),
               const SizedBox(height: 40),
+              SwitchListTile(
+                title: const Text('Evento Privado'),
+                subtitle: const Text('Participantes precisarão da sua aprovação para entrar.'),
+                value: _isPrivate,
+                onChanged: (newValue) => setState(() => _isPrivate = newValue),
+                activeColor: Colors.green,
+              ),
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orangeAccent,
+                    backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
