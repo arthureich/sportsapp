@@ -120,8 +120,6 @@ class EventService {
 
   Future<void> approveParticipant(String eventId, LocalUser userToApprove) async {
     try {
-      // Remove da lista de pendentes E adiciona na lista de participantes
-      // em uma única transação
       await _eventsCollection.doc(eventId).update({
         'pendingParticipants': FieldValue.arrayRemove([userToApprove.toJson()]),
         'participants': FieldValue.arrayUnion([userToApprove.toJson()])
@@ -168,5 +166,16 @@ Future<UserModel> getUserData(String userId) async {
       }
       final userSnapshots = await _usersCollection.where(FieldPath.documentId, whereIn: userIds).get();
       return userSnapshots.docs.map((doc) => UserModel.fromSnapshot(doc)).toList();
+  }
+
+  Stream<List<Event>> getUpcomingEventsForLocation(String locationName) {
+    return _eventsCollection
+        .where('location.name', isEqualTo: locationName)
+        .where('dateTime', isGreaterThanOrEqualTo: Timestamp.now())
+        .orderBy('dateTime')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => Event.fromSnapshot(doc)).toList();
+    });
   }
 }

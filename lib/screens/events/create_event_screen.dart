@@ -13,7 +13,12 @@ final kGoogleApiKey = dotenv.env['kGooglePlacesApiKey'] ?? 'fallback_key';
 
 class CreateEventScreen extends StatefulWidget {
   final event_model.Event? eventToEdit;
-  const CreateEventScreen({super.key, this.eventToEdit});
+  final PredefinedLocation? predefinedLocation;
+  const CreateEventScreen({
+    super.key, 
+    this.eventToEdit,
+    this.predefinedLocation, 
+  });
 
   @override
   State<CreateEventScreen> createState() => _CreateEventScreenState();
@@ -27,22 +32,23 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   bool _isLoading = false;
   bool _isPredictionLoading = false;
   bool _isDetailsLoading = false;
+  bool get _isEditMode => widget.eventToEdit != null;
+  bool get _isPredefinedLocation => widget.predefinedLocation != null;
+  bool _isPrivate = false; 
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  Timer? _debounce;
   String? _selectedSport;
+  String _selectedSkillLevel = 'Todos'; 
+  String? _sessionToken;
   GeoPoint? _selectedGeoPoint;
   PlaceDetails? _placeDetails;
   PredefinedLocation? _selectedPredefinedLocation;
-
-  late GoogleMapsPlaces _places;
   List<Prediction> _apiPredictions = [];
   List<PredefinedLocation> _filteredPredefinedLocations = [];
-  String? _sessionToken;
-  Timer? _debounce;
-  String _selectedSkillLevel = 'Todos'; 
-  bool _isPrivate = false; 
-  bool get _isEditMode => widget.eventToEdit != null;
+
+  late GoogleMapsPlaces _places;
   final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida'];
   final List<String> _skillLevels = ['Todos', 'Iniciante', 'Intermediário', 'Avançado'];
   final EventService _eventService = EventService();
@@ -53,7 +59,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
     _generateSessionToken();
     _filteredPredefinedLocations = [];
-   _locationController.addListener(_onSearchChanged);
+    _locationController.addListener(_onSearchChanged);
   if (_isEditMode) {
       final event = widget.eventToEdit!;
       _titleController.text = event.title;
@@ -65,6 +71,12 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       _selectedGeoPoint = event.location.coordinates;
       _selectedSkillLevel = event.skillLevel;
       _isPrivate = event.isPrivate;
+    }
+  else if (_isPredefinedLocation) {
+      final loc = widget.predefinedLocation!;
+      _locationController.text = loc.name;
+      _selectedGeoPoint = loc.coordinates;
+      _selectedPredefinedLocation = loc; 
     }
   }
   void _generateSessionToken() {
@@ -334,7 +346,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   @override
   Widget build(BuildContext context) {
     final combinedListLength = _filteredPredefinedLocations.length + _apiPredictions.length;
-    final bool showSuggestions = (_filteredPredefinedLocations.isNotEmpty || _apiPredictions.isNotEmpty) && !_isDetailsLoading;
+    final bool showSuggestions = (_filteredPredefinedLocations.isNotEmpty || _apiPredictions.isNotEmpty) && !_isDetailsLoading && !_isPredefinedLocation;
     return Scaffold(
       appBar: AppBar(title: Text(_isEditMode ? 'Editar Evento' : 'Criar Novo Evento'), centerTitle: true),
       body: GestureDetector(
@@ -393,14 +405,18 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               const SizedBox(height: 20),
               TextField(
                   controller: _locationController,
+                  enabled: !_isPredefinedLocation,
                   decoration: InputDecoration(
                     labelText: "Localização", hintText: "Digite ou selecione um local", border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.location_on_outlined),
-                    suffixIcon: _isPredictionLoading || _isDetailsLoading
-                      ? Container( width: 24, height: 24, padding: const EdgeInsets.all(12.0), child: const CircularProgressIndicator(strokeWidth: 2))
-                      : _locationController.text.isNotEmpty
-                        ? IconButton( icon: const Icon(Icons.clear), tooltip: "Limpar", onPressed: () => _locationController.clear())
-                        : const Icon(Icons.search),
+                    suffixIcon: _isPredefinedLocation
+                      ? const Icon(Icons.lock, color: Colors.grey)
+                      : (_isPredictionLoading || _isDetailsLoading
+                        ? Container( width: 24, height: 24, padding: const EdgeInsets.all(12.0), child: const CircularProgressIndicator(strokeWidth: 2)) // seu loading
+                        : _locationController.text.isNotEmpty
+                          ? IconButton(icon: const Icon(Icons.clear), onPressed: () => _locationController.clear())
+                          : const Icon(Icons.search)
+                      )
                   ),
                   onTap: () {
                   },

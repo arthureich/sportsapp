@@ -3,9 +3,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:ui';
+import '../locations/predefined_location_detail_screen.dart';
+import '../events/event_detail_screen.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart';
-import '../events/event_detail_screen.dart';
+import '../../data/predefined_locations.dart'; 
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -29,11 +31,40 @@ class _HomeContentState extends State<HomeContent> {
   double _filterDistance = 20.0;
   bool _filterHasVacancies = false;
   TimeOfDay? _filterTime;
+  Set<Marker> _predefinedLocationMarkers = {};
 
   @override
   void initState() {
     super.initState();
     _fetchLocationAndLoadEvents();
+    _loadPredefinedLocationMarkers();
+  }
+
+  void _loadPredefinedLocationMarkers() {
+    final markers = <Marker>{};
+    for (final loc in predefinedLocationsCascavel) {
+      markers.add(
+        Marker(
+          markerId: MarkerId('loc_${loc.name}'), // ID único
+          position: LatLng(loc.coordinates.latitude, loc.coordinates.longitude),
+          // Ícone verde para diferenciar
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen), 
+          infoWindow: InfoWindow(
+            title: loc.name,
+            snippet: "Clique para ver detalhes do local",
+            onTap: () {
+              // --- 6. NAVEGA PARA A NOVA TELA ---
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => PredefinedLocationDetailScreen(location: loc),
+              ));
+            },
+          ),
+        ),
+      );
+    }
+    setState(() {
+      _predefinedLocationMarkers = markers;
+    });
   }
 
   Future<void> _fetchLocationAndLoadEvents() async {
@@ -135,14 +166,14 @@ class _HomeContentState extends State<HomeContent> {
       return GoogleMap(
           initialCameraPosition: const CameraPosition(target: _initialPosition, zoom: 13),
           onMapCreated: (controller) => _mapController = controller,
-          markers: const {},
+          markers: _predefinedLocationMarkers,
       );
     }
     
     return StreamBuilder<List<Event>>(
       stream: _eventsStream,
       builder: (context, snapshot) {
-        Set<Marker> markers = {};
+        Set<Marker> eventMarkers = {};
         if (snapshot.hasData) {
           final allEvents = snapshot.data!;
           final filteredEvents = (_selectedSport == 'Todos')
@@ -150,7 +181,7 @@ class _HomeContentState extends State<HomeContent> {
               : allEvents
                   .where((event) => event.sport == _selectedSport)
                   .toList();
-        markers = filteredEvents.map((event) {
+        eventMarkers = filteredEvents.map((event) {
             return Marker(
               markerId: MarkerId(event.id),
               position: LatLng(
@@ -180,7 +211,7 @@ class _HomeContentState extends State<HomeContent> {
             zoom: 13,
           ),
           onMapCreated: (controller) => _mapController = controller,
-          markers: markers,
+          markers: eventMarkers.union(_predefinedLocationMarkers),
           myLocationEnabled: true,
           myLocationButtonEnabled: true,
         );
@@ -203,10 +234,10 @@ class _HomeContentState extends State<HomeContent> {
             filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8), // Corrigido de withValues
+                color: Colors.white.withValues(alpha: 0.8), 
               ),
               child: StreamBuilder<List<Event>>(
-                stream: _eventsStream, // Ouve o MESMO stream do mapa
+                stream: _eventsStream, 
                 builder: (context, snapshot) {
                   
                   if (_eventsStream == null) {
