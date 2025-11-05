@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../api/user_service.dart';
+import '../../api/storage_service.dart';
 import '../../models/user_model.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -18,6 +21,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final UserService _userService = UserService();
   bool _isLoading = false;
   UserModel? _currentUserData; 
+  final StorageService _storageService = StorageService();
+  final ImagePicker _picker = ImagePicker();
+  File? _pickedImage;
 
   @override
   void initState() {
@@ -47,24 +53,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) {
+      setState(() {
+        _pickedImage = File(image.path);
+      });
+    }
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => _isLoading = true);
-
+    String? newImageUrl;
+    
+    try {
+      if (_pickedImage != null) {
+        newImageUrl = await _storageService.uploadImage(
+          _pickedImage!, 
+          'profile_images/${widget.userId}' 
+        );
+      }
     final Map<String, dynamic> updatedData = {
       'nome': _nameController.text.trim(),
       'bio': _bioController.text.trim(),
+      if (newImageUrl != null) 'fotoUrl': newImageUrl,
     };
 
-    try {
       await _userService.updateUser(widget.userId, updatedData);
 
        final user = FirebaseAuth.instance.currentUser;
-       if (user != null && user.displayName != _nameController.text.trim()) {
-         await user.updateDisplayName(_nameController.text.trim());
+       if (user != null) {
+         if (user.displayName != _nameController.text.trim()) {
+           await user.updateDisplayName(_nameController.text.trim());
+         }
+         if (newImageUrl != null && user.photoURL != newImageUrl) {
+           await user.updatePhotoURL(newImageUrl);
+         }
        }
 
 
@@ -100,14 +128,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       appBar: AppBar(
         title: const Text('Editar Perfil'),
         actions: [
-          // Botão Salvar na AppBar
           IconButton(
             icon: const Icon(Icons.check),
             onPressed: _isLoading ? null : _saveProfile,
           ),
         ],
       ),
-      body: _isLoading && _currentUserData == null // Mostra loading só se ainda não carregou os dados iniciais
+      body: _isLoading && _currentUserData == null 
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
@@ -116,17 +143,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // TODO: Adicionar widget para trocar foto de perfil (ImagePicker + Firebase Storage)
                     Center(
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: _currentUserData?.fotoUrl != null && _currentUserData!.fotoUrl.isNotEmpty
-                            ? NetworkImage(_currentUserData!.fotoUrl)
-                            : NetworkImage('https://avatar.iran.liara.run/public/${_currentUserData?.genero ?? 'boy'}?username=${widget.userId}') as ImageProvider, // <-- ATUALIZADO
-                         onBackgroundImageError: (exception, stackTrace) {},
-                         child: _currentUserData?.fotoUrl == null || _currentUserData!.fotoUrl.isEmpty
-                            ? const Icon(Icons.person, size: 50) 
-                            : null,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _pickedImage != null
+                                ? FileImage(_pickedImage!) as ImageProvider
+                                : (_currentUserData?.fotoUrl != null && _currentUserData!.fotoUrl.isNotEmpty
+                                  ? NetworkImage(_currentUserData!.fotoUrl)
+                                  : NetworkImage('https://avatar.iran.liara.run/public/${_currentUserData?.genero ?? 'boy'}?username=${widget.userId}') as ImageProvider
+                                ),
+                             onBackgroundImageError: (exception, stackTrace) {},
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: -10,
+                            child: IconButton(
+                              icon: const CircleAvatar(
+                                radius: 15,
+                                backgroundColor: Colors.orangeAccent,
+                                child: Icon(Icons.edit, size: 18, color: Colors.white)
+                              ),
+                              onPressed: _pickImage,
+                            ),
+                          )
+                        ],
                       ),
                     ),
                     const SizedBox(height: 30),

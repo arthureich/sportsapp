@@ -118,8 +118,7 @@ class Event {
     }
 
     try {
-      // Função helper para converter listas de participantes
-      List<LocalUser> _parseParticipants(dynamic listData) {
+      List<LocalUser> parseParticipants(dynamic listData) {
         if (listData is List) {
           return listData
               .map((p) => LocalUser.fromJson(p as Map<String, dynamic>))
@@ -128,8 +127,8 @@ class Event {
         return [];
       }
 
-      final participantsList = _parseParticipants(data['participants']);
-      final pendingList = _parseParticipants(data['pendingParticipants']);
+      final participantsList = parseParticipants(data['participants']);
+      final pendingList = parseParticipants(data['pendingParticipants']);
 
       DateTime dateTime;
       if (data['dateTime'] is Timestamp) {

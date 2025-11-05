@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../api/team_service.dart';
+import '../../api/storage_service.dart';
 import '../../models/team_model.dart';
 
 class CreateTeamScreen extends StatefulWidget {
@@ -22,12 +25,24 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
 
   final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Outro'];
   final TeamService _teamService = TeamService();
+  final StorageService _storageService = StorageService();
+  final ImagePicker _picker = ImagePicker();
+  File? _pickedCrest;
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) {
+      setState(() {
+        _pickedCrest = File(image.path);
+      });
+    }
   }
 
   Future<void> _saveTeam() async {
@@ -46,26 +61,34 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
     
     setState(() => _isLoading = true);
 
-    final newTeam = Team(
-      id: '', // O Firestore irá gerar o ID
-      name: _nameController.text,
-      description: _descriptionController.text,
-      sport: _selectedSport!,
-      crestUrl: '',
-      currentMembers: 1, 
-      maxMembers: _maxMembers.toInt(),
-      isPublic: _isPublic,
-      memberIds: [currentUser.uid], // <-- ADICIONA O CRIADOR COMO PRIMEIRO MEMBRO
-    );
-
     try {
-      await _teamService.addTeam(newTeam);
+      String crestUrl = '';
+
+      if (_pickedCrest != null) {
+        crestUrl = await _storageService.uploadImage(
+          _pickedCrest!, 
+          'team_crests' 
+        );
+      }
+    
+    final newTeam = Team(
+        id: '', 
+        name: _nameController.text,
+        description: _descriptionController.text,
+        sport: _selectedSport!,
+        crestUrl: crestUrl, // <-- 7. PASSA A URL
+        currentMembers: 1, 
+        maxMembers: _maxMembers.toInt(),
+        isPublic: _isPublic,
+        memberIds: [currentUser!.uid],
+      );
+
+    await _teamService.addTeam(newTeam);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Equipe criada com sucesso!')),
       );
-      Navigator.of(context).pop();
-    } catch (e) {
+    }  catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ocorreu um erro ao criar a equipe.')),
@@ -100,34 +123,36 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.grey[300],
-                      child: Icon(Icons.shield_outlined, size: 50, color: Colors.grey[600]),
+                      // Mostra a imagem nova (se selecionada)
+                      backgroundImage: _pickedCrest != null 
+                        ? FileImage(_pickedCrest!) as ImageProvider 
+                        : null,
+                      child: _pickedCrest == null 
+                        ? Icon(Icons.shield_outlined, size: 50, color: Colors.grey[600])
+                        : null,
                     ),
                     Positioned(
                       bottom: 0,
-                      right: 0,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.green,
-                          border: Border.all(color: Colors.white, width: 2),
+                      right: -10,
+                      child: IconButton(
+                        icon: const CircleAvatar(
+                          radius: 15,
+                          backgroundColor: Colors.green,
+                          child: Icon(Icons.camera_alt, size: 18, color: Colors.white)
                         ),
-                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                        onPressed: _pickImage,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 30),
-
-              // --- Campo Nome da Equipe ---
               TextFormField(
                 controller: _nameController,
                 decoration: _buildInputDecoration(label: 'Nome da Equipe'),
                 validator: (value) => (value == null || value.isEmpty) ? 'Dê um nome para sua equipe.' : null,
               ),
               const SizedBox(height: 20),
-
-              // --- Seleção de Esporte ---
               DropdownButtonFormField<String>(
                 decoration: _buildInputDecoration(label: 'Esporte Principal'),
                 value: _selectedSport,
@@ -136,8 +161,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
                 validator: (value) => value == null ? 'Selecione um esporte.' : null,
               ),
               const SizedBox(height: 20),
-
-              // --- Campo Descrição ---
               TextFormField(
                 controller: _descriptionController,
                 decoration: _buildInputDecoration(label: 'Descrição (Opcional)'),
@@ -145,7 +168,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- Número Máximo de Membros (Slider) ---
               Text('Máximo de Membros: ${_maxMembers.toInt()}', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)),
               Slider(
                 value: _maxMembers,
@@ -162,7 +184,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
               ),
               const SizedBox(height: 10),
 
-              // --- Privacidade da Equipe (Switch) ---
               SwitchListTile(
                 title: const Text('Equipe Aberta', style: TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(_isPublic ? 'Qualquer um pode entrar' : 'Apenas por convite'),
@@ -177,7 +198,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
               ),
               const SizedBox(height: 40),
 
-              // --- Botão de Salvar ---
               Container(
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
@@ -202,7 +222,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
     );
   }
 
-  // Widgets auxiliares para manter a consistência visual
   InputDecoration _buildInputDecoration({required String label}) {
     return InputDecoration(
       labelText: label,

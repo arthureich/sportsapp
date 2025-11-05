@@ -137,13 +137,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                        children: [
                          _buildProfileHeader(user), 
                          TabBar( 
-                           labelColor: Colors.orangeAccent,
+                           labelColor: Colors.green,
                            unselectedLabelColor: Colors.grey,
-                           indicatorColor: Colors.orangeAccent,
+                           indicatorColor: Colors.green,
                            tabs: const [
-                             Tab(icon: Icon(Icons.event), text: 'Meus Eventos'),
-                             Tab(icon: Icon(Icons.history), text: 'Histórico'),
-                             Tab(icon: Icon(Icons.emoji_events), text: 'Conquistas'),
+                             Tab(icon: Icon(Icons.event, color: Colors.green), text: 'Meus Eventos'),
+                             Tab(icon: Icon(Icons.history, color: Colors.green), text: 'Histórico'),
+                             Tab(icon: Icon(Icons.emoji_events, color: Colors.green), text: 'Conquistas'),
                            ],
                          ),
                        ],
@@ -194,11 +194,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          user.nome, // Dado dinâmico
+          user.nome, 
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         Text(
-          user.bio.isNotEmpty ? user.bio : 'Sem bio definida', // Dado dinâmico
+          user.bio.isNotEmpty ? user.bio : 'Sem bio definida', 
           style: const TextStyle(fontSize: 16, color: Colors.grey),
           textAlign: TextAlign.center,
           maxLines: 2,
@@ -618,7 +618,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-              // --- BOTÃO DE AVALIAR (SÓ APARECE SE FOR PASSADO) ---
               if (isPast) ...[
                 const Divider(height: 20),
                 Align(
