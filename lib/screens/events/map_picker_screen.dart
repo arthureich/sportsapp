@@ -10,7 +10,6 @@ class MapPickerScreen extends StatefulWidget {
 }
 
 class _MapPickerScreenState extends State<MapPickerScreen> {
-  // Posição inicial do mapa (Ex: Cascavel, PR)
   static const LatLng _initialPosition = LatLng(-24.9555, -53.4552);
   
   LatLng? _pickedLocation;
@@ -45,10 +44,10 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           target: _initialPosition,
           zoom: 13,
         ),
-        onTap: _selectLocation, // Chama a função quando o utilizador toca no mapa
+        onTap: _selectLocation, 
         markers: (_pickedLocation == null) 
-          ? {} // Nenhum marcador se nenhum local foi escolhido
-          : { // Mostra um marcador no local escolhido
+          ? {} 
+          : { 
               Marker(
                 markerId: const MarkerId('m1'),
                 position: _pickedLocation!,

@@ -507,14 +507,12 @@ class _HomeContentState extends State<HomeContent> {
                                     Expanded(
                                       child: OutlinedButton(
                                         onPressed: () {
-                                          // 9. O 'Limpar' precisa atualizar o modal E a página principal
-                                          setModalState(() { // Limpa o modal
+                                          setModalState(() { 
                                             _filterDate = null;
                                             _filterTime = null;
                                             _filterDistance = 20.0;
                                             _filterHasVacancies = false;
                                           });
-                                          // Chama o 'setState' principal para re-filtrar a lista
                                           _applyFilters(modalContext); 
                                         },
                                         child: const Text('Limpar Filtros'),
@@ -524,7 +522,6 @@ class _HomeContentState extends State<HomeContent> {
                                     Expanded(
                                       child: FilledButton(
                                         onPressed: () {
-                                          // 10. O 'Aplicar' chama a lógica principal
                                           _applyFilters(modalContext);
                                         },
                                         child: const Text('Aplicar'),
@@ -535,7 +532,7 @@ class _HomeContentState extends State<HomeContent> {
                               ),
                             ],
                           );
-                        } // Fim do StatefulBuilder
+                        } 
                       ),
                     ),
                   );

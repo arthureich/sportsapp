@@ -36,23 +36,18 @@ class MyEventsScreen extends StatelessWidget {
             return _buildEmptyState(); 
           }
 
-          // Filtra eventos do usuário
           final List<Event> myEvents = snapshot.data!
               .where((event) =>
                   event.organizer.id == currentUserId ||
                   event.participants.any((p) => p.id == currentUserId))
               .toList();
 
-          // --- LÓGICA SIMPLIFICADA ---
-          // Filtra APENAS eventos futuros
           final now = DateTime.now();
           final List<Event> upcomingEvents = myEvents
               .where((e) => e.dateTime.isAfter(now))
               .toList();
           
-          // Ordena
           upcomingEvents.sort((a, b) => a.dateTime.compareTo(b.dateTime));
-          // --- FIM DA LÓGICA SIMPLIFICADA ---
 
           if (upcomingEvents.isEmpty) {
             return _buildEmptyState();
@@ -78,7 +73,6 @@ class MyEventsScreen extends StatelessWidget {
         children: [
           Icon(Icons.calendar_today_outlined, size: 60, color: Colors.grey),
           const SizedBox(height: 20),
-          // Mensagem atualizada
           const Text(
             'Nenhum evento futuro agendado.',
             style: TextStyle(fontSize: 16, color: Colors.grey),

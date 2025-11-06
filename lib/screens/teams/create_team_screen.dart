@@ -76,7 +76,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
         name: _nameController.text,
         description: _descriptionController.text,
         sport: _selectedSport!,
-        crestUrl: crestUrl, // <-- 7. PASSA A URL
+        crestUrl: crestUrl, 
         currentMembers: 1, 
         maxMembers: _maxMembers.toInt(),
         isPublic: _isPublic,
@@ -123,7 +123,6 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.grey[300],
-                      // Mostra a imagem nova (se selecionada)
                       backgroundImage: _pickedCrest != null 
                         ? FileImage(_pickedCrest!) as ImageProvider 
                         : null,

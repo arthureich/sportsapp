@@ -10,8 +10,6 @@ class Team {
   final int maxMembers;
   final bool isPublic;
   final List<String> memberIds;
-  // Poderia adicionar uma lista de IDs de membros aqui no futuro
-  // final List<String> memberIds; 
 
   Team({
     required this.id,
@@ -25,7 +23,6 @@ class Team {
     required this.memberIds,
   });
 
-  // Converte o objeto Team para um mapa que pode ser guardado no Firestore
   Map<String, dynamic> toJson() => {
         'name': name,
         'sport': sport,
@@ -36,7 +33,6 @@ class Team {
         'memberIds': memberIds,
       };
 
-  // Cria uma instância de Team a partir de um documento do Firestore
   factory Team.fromSnapshot(DocumentSnapshot snapshot) {
     final data = snapshot.data() as Map<String, dynamic>? ?? {};
 

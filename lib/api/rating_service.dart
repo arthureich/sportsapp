@@ -44,7 +44,6 @@ class RatingService {
     }
   }
 
-  // Verifica se o usuário logado já avaliou um participante específico neste evento
   Future<bool> hasUserAlreadyRated(String eventId, String raterUserId, String ratedUserId) async {
      final docId = '${eventId}_${raterUserId}_$ratedUserId';
      final doc = await _ratingsCollection.doc(docId).get();

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../api/team_service.dart';
-import '../../models/team_model.dart';
 import 'create_team_screen.dart';
 import 'team_detail_screen.dart';
+import '../../api/team_service.dart';
+import '../../models/team_model.dart';
 
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
@@ -14,7 +14,7 @@ class TeamsScreen extends StatefulWidget {
 
 class _TeamsScreenState extends State<TeamsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-final TeamService _teamService = TeamService(); // Instância do serviço
+final TeamService _teamService = TeamService(); 
 final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
@@ -50,7 +50,6 @@ final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
       ),
       body: Column(
         children: [
-          // Botão Criar Equipe (sem alteração)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Container(
@@ -93,9 +92,7 @@ final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Aba 'Minhas Equipes' com StreamBuilder
                 _buildTeamsStream(isMyTeams: true),
-                // Aba 'Explorar' com StreamBuilder
                 _buildTeamsStream(isMyTeams: false),
               ],
             ),
@@ -105,10 +102,7 @@ final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
     );
   }
 
-  // Widget que constrói a lista a partir de um Stream do Firebase
   Widget _buildTeamsStream({required bool isMyTeams}) {
-    // Lógica de filtragem (ainda simulada, pode ser melhorada com queries no futuro)
-    // Por agora, 'Minhas Equipes' mostra equipes privadas e 'Explorar' mostra públicas
     return StreamBuilder<List<Team>>(
       stream: _teamService.getTeams(),
       builder: (context, snapshot) {
@@ -118,7 +112,6 @@ final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
         if (snapshot.hasError) {
           return const Center(child: Text('Erro ao carregar as equipes.'));
         }
-        // Verifica login ANTES de filtrar
         if (_currentUserId == null && isMyTeams) {
            return Center(child: Text('Faça login para ver suas equipes.', style: TextStyle(color: Colors.grey[600])));
         }
@@ -130,13 +123,9 @@ final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
         List<Team> filteredTeams;
 
         if (isMyTeams) {
-          // Filtra onde o ID do usuário está na lista de membros
           filteredTeams = allTeams.where((team) => team.memberIds.contains(_currentUserId)).toList();
         } else {
-          // Filtra equipes públicas que o usuário NÃO participa (para não duplicar)
            filteredTeams = allTeams.where((team) => team.isPublic && !team.memberIds.contains(_currentUserId)).toList();
-           // Ou apenas as públicas, se quiser mostrar todas:
-           // filteredTeams = allTeams.where((team) => team.isPublic).toList();
         }
 
         return _buildTeamList(filteredTeams, isMyTeams: isMyTeams);
@@ -155,7 +144,6 @@ Widget _buildTeamList(List<Team> teams, {required bool isMyTeams}) {
       padding: const EdgeInsets.only(top: 8),
       itemCount: teams.length,
       itemBuilder: (context, index) {
-        // --- ADICIONA NAVEGAÇÃO AO CLICAR ---
         return GestureDetector(
             onTap: () {
               Navigator.push(
@@ -170,7 +158,6 @@ Widget _buildTeamList(List<Team> teams, {required bool isMyTeams}) {
   }
 }
 
-// Card de Equipe 
 class TeamCard extends StatelessWidget {
   final Team team;
   const TeamCard({super.key, required this.team});
@@ -244,7 +231,6 @@ class TeamCard extends StatelessWidget {
   }
 }
 
-// --- Widget para a TabBar Animada ---
 class AnimatedTabBar extends StatefulWidget {
   final TabController tabController;
   const AnimatedTabBar({super.key, required this.tabController});
@@ -274,7 +260,6 @@ class _AnimatedTabBarState extends State<AnimatedTabBar> {
         builder: (context, constraints) {
           return Stack(
             children: [
-              // --- Fundo animado que desliza ---
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
@@ -289,7 +274,6 @@ class _AnimatedTabBarState extends State<AnimatedTabBar> {
                   ),
                 ),
               ),
-              // --- Abas Clicáveis ---
               Row(
                 children: [
                   Expanded(child: Center(child: TabButton(title: 'Minhas Equipes', isSelected: widget.tabController.index == 0, onTap: () => widget.tabController.animateTo(0)))),
@@ -304,7 +288,6 @@ class _AnimatedTabBarState extends State<AnimatedTabBar> {
   }
 }
 
-// Widget para o texto da aba
 class TabButton extends StatelessWidget {
    final String title;
    final bool isSelected;

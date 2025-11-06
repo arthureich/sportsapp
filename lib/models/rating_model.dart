@@ -2,11 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Rating {
   final String id;
-  final String eventId;       // ID do evento avaliado
-  final String raterUserId;   // ID de quem deu a nota
-  final String ratedUserId;   // ID de quem recebeu a nota
-  final double score;         // A nota (ex: 1 a 5)
-  final String? comment;       // Comentário opcional
+  final String eventId;       
+  final String raterUserId;   
+  final String ratedUserId;   
+  final double score;        
+  final String? comment;      
   final Timestamp createdAt;
 
   Rating({
@@ -19,7 +19,6 @@ class Rating {
     required this.createdAt,
   });
 
-  // Converte para JSON para salvar no Firestore
   Map<String, dynamic> toJson() => {
         'eventId': eventId,
         'raterUserId': raterUserId,

@@ -16,8 +16,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   String _reportType = 'Problema no App'; // Valor inicial
   final List<String> _reportTypes = ['Problema no App', 'Reportar Usuário', 'Reportar Local'];
-  
-  // Campos opcionais
+
   final _reportedItemController = TextEditingController(); 
 
   @override
@@ -36,7 +35,6 @@ class _ReportScreenState extends State<ReportScreen> {
       await _reportService.submitReport(
         type: _reportType,
         description: _descriptionController.text,
-        // Envia o ID/Nome se o tipo for Usuário ou Local
         reportedUserId: _reportType == 'Reportar Usuário' ? _reportedItemController.text : null,
         reportedLocationName: _reportType == 'Reportar Local' ? _reportedItemController.text : null,
       );
@@ -72,7 +70,6 @@ class _ReportScreenState extends State<ReportScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Seletor de Tipo
               DropdownButtonFormField<String>(
                 decoration: _buildInputDecoration(label: 'Tipo de Relatório'),
                 value: _reportType,
@@ -81,7 +78,6 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Campo dinâmico para ID do Usuário ou Nome do Local
               if (_reportType == 'Reportar Usuário' || _reportType == 'Reportar Local')
                 TextFormField(
                   controller: _reportedItemController,
@@ -94,7 +90,6 @@ class _ReportScreenState extends State<ReportScreen> {
                 
               const SizedBox(height: 20),
               
-              // Descrição
               TextFormField(
                 controller: _descriptionController,
                 decoration: _buildInputDecoration(label: 'Descrição', hint: 'Descreva o que aconteceu...'),
@@ -103,7 +98,6 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Botão Enviar
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -120,7 +114,6 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  // Helper de Input
   InputDecoration _buildInputDecoration({required String label, String? hint}) {
     return InputDecoration(
       labelText: label,

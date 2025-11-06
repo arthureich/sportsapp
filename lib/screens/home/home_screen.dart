@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/events/create_event_screen.dart';
 import 'package:flutter_application_1/screens/teams/teams.screen.dart';
+import 'package:flutter_svg/flutter_svg.dart'; 
 import 'home_content.dart';
 import '../profile/profile_screen.dart'; 
 import '../events/my_events_screen.dart';
-import 'package:flutter_svg/flutter_svg.dart'; 
 
 class NewHomeScreen extends StatefulWidget {
   const NewHomeScreen({super.key});
