@@ -124,13 +124,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildSocialButton(iconPath: 'assets/icons/google.svg', onTap: () {}),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
                       const Text("Não tem uma conta?"),
                       TextButton(
                         onPressed: () {
