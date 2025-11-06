@@ -6,6 +6,7 @@ import 'package:flutter_application_1/api/notification_service.dart';
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
 import '../events/event_detail_screen.dart';
+import '../../api/auth_service.dart';
 import '../../api/event_service.dart'; 
 import '../../api/user_service.dart'; 
 import '../../api/rating_service.dart';
@@ -29,6 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final NotificationService _notificationService = NotificationService();
   final UserService _userService = UserService();
   final EventService _eventService = EventService();
+  final AuthService _authService = AuthService();
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; 
 
   final RatingService _ratingService = RatingService();
@@ -61,10 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
         break;
       case ProfileMenuOption.logout:
-        if (_currentUserId != null) {
-            await _notificationService.removeTokenOnLogout(_currentUserId);
-         }
-         await FirebaseAuth.instance.signOut();
+        await _authService.signOut();
         break;
     }
   }

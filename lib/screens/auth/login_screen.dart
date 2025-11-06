@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart';
 import '../home/home_screen.dart';
+import '../../api/auth_service.dart';
 
-// PASSO 1: Transformar em StatefulWidget
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -12,10 +12,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // PASSO 2: Declarar os controllers
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
 
   @override
@@ -25,34 +25,40 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // PASSO 3: Mover a lógica de login para uma função assíncrona
   Future<void> _loginUser() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await _authService.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const NewHomeScreen()),
-        );
-      }
-    } on FirebaseAuthException {
+      } on FirebaseAuthException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Erro de login: Usuário ou senha inválidos.")),
         );
       }
     } finally {
-      if(mounted) {
-        setState(() => _isLoading = false);
+      if(mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signInWithGoogle();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erro ao logar com Google: ${e.toString()}")),
+        );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -84,7 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text('Bem-vindo de volta!', textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 50),
 
-                  // PASSO 4: Conectar os controllers e adicionar validação
                   TextFormField(
                     controller: _emailController,
                     decoration: _buildInputDecoration(label: 'Email', icon: Icons.email_outlined),
@@ -108,14 +113,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('ENTRAR'),
                   ),
                   const SizedBox(height: 24),
-                  const Row(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text('OU ENTRE COM', style: TextStyle(color: Colors.grey)),
-                      ),
-                      Expanded(child: Divider()),
+                      // O seu '_buildSocialButton' já existe
+                      _buildSocialButton(iconPath: 'assets/icons/google.svg', onTap: _isLoading ? () {} : _loginWithGoogle),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -150,7 +152,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Métodos de estilo (sem alterações)
   InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
     return InputDecoration(
       labelText: label,

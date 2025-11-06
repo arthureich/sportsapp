@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../api/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedGender; 
   final List<String> _genders = ['Masculino', 'Feminino'];
   final List<String> _availableSports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Ciclismo', 'Natação', 'Outro'];
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -52,33 +54,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await _authService.registerWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
+        nome: _nameController.text.trim(),
+        bio: _bioController.text.trim(),
+        genero: _selectedGender!,
+        esportes: _selectedSports,
       );
-
-      final String? userId = userCredential.user?.uid;
-
-      if (userId != null) {
-        final genderValue = (_selectedGender == 'Masculino') ? 'boy' : 'girl';
-        await FirebaseFirestore.instance.collection('usuarios').doc(userId).set({
-          'nome': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'bio': _bioController.text.trim(),
-          'esportesInteresse': _selectedSports,
-          'fotoUrl': '', 
-          'scoreEsportividade': 5.0, 
-          'createdAt': FieldValue.serverTimestamp(),
-          'fcmTokens': [],
-          'genero': genderValue, 
-        });
-        await userCredential.user?.updateDisplayName(_nameController.text.trim());
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Cadastro realizado! Faça o login.')),
-          );
-          Navigator.of(context).pop();
-        }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cadastro realizado! Faça o login.')),
+        );
+        Navigator.of(context).pop();
       }
 
     } on FirebaseAuthException catch (e) {
@@ -88,11 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false; 
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

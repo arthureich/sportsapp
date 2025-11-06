@@ -322,6 +322,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     } else {
       final currentUser = FirebaseAuth.instance.currentUser!;
       final organizerUser = event_model.LocalUser(id: currentUser.uid, name: currentUser.displayName ?? 'Usuário Anônimo', avatarUrl: currentUser.photoURL ?? '');
+      final String imageUrl = _selectedPredefinedLocation?.imageUrl.isNotEmpty == true
+          ? _selectedPredefinedLocation!.imageUrl
+          : 'https://cdn-icons-png.flaticon.com/512/11438/11438126.png';
       final newEvent = event_model.Event(
         id: '', title: _titleController.text, description: _descriptionController.text,
         sport: sportName,
@@ -331,7 +334,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           address: locationAddress,
           coordinates: _selectedGeoPoint!,
         ),
-        imageUrl: 'https://cdn-icons-png.flaticon.com/512/11438/11438126.png',
+        imageUrl: imageUrl,
         organizer: organizerUser,
         participants: [organizerUser], 
         maxParticipants: 12,
