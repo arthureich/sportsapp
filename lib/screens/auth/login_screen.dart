@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart';
-import '../home/home_screen.dart';
 import '../../api/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -116,18 +115,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // O seu '_buildSocialButton' já existe
                       _buildSocialButton(iconPath: 'assets/icons/google.svg', onTap: _isLoading ? () {} : _loginWithGoogle),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildSocialButton(iconPath: 'assets/icons/google.svg', onTap: () {}),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -179,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.g_mobiledata, size: 28), // Placeholder
+        child: const Icon(Icons.g_mobiledata, size: 28), 
       ),
     );
   }

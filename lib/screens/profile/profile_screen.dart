@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:flutter_application_1/api/notification_service.dart';
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
 import '../events/event_detail_screen.dart';
@@ -27,7 +26,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final NotificationService _notificationService = NotificationService();
   final UserService _userService = UserService();
   final EventService _eventService = EventService();
   final AuthService _authService = AuthService();
