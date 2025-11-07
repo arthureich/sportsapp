@@ -19,11 +19,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
   final UserService _userService = UserService();
-  bool _isLoading = false;
-  UserModel? _currentUserData; 
   final StorageService _storageService = StorageService();
   final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+  UserModel? _currentUserData; 
   File? _pickedImage;
+  final List<String> _selectedSports = [];
+  final List<String> _availableSports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Ciclismo', 'Natação', 'Outro'];
 
   @override
   void initState() {
@@ -40,6 +42,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _currentUserData = userData;
           _nameController.text = userData.nome;
           _bioController.text = userData.bio;
+          _selectedSports.clear(); 
+          _selectedSports.addAll(userData.esportesInteresse);
         });
       } else if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
@@ -67,6 +71,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
+    if (_selectedSports.isEmpty) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Por favor, selecione pelo menos um esporte de interesse.')),
+       );
+       return;
+    }
+
     setState(() => _isLoading = true);
     String? newImageUrl;
     
@@ -80,6 +91,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final Map<String, dynamic> updatedData = {
       'nome': _nameController.text.trim(),
       'bio': _bioController.text.trim(),
+      'esportesInteresse': _selectedSports,
       if (newImageUrl != null) 'fotoUrl': newImageUrl,
     };
 
@@ -100,7 +112,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Perfil atualizado com sucesso!')),
         );
-        Navigator.of(context).pop(); 
+        if(Navigator.canPop(context)) {
+           Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -124,8 +138,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.canPop(context);
     return Scaffold(
       appBar: AppBar(
+        leading: canPop ? BackButton(color: Colors.grey[800]) : null,
         title: const Text('Editar Perfil'),
         actions: [
           IconButton(
@@ -184,6 +200,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       maxLines: 3,
                       maxLength: 150, 
                     ),
+                    const SizedBox(height: 20),
+                    Text('Esportes de Interesse:', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8.0, 
+                      runSpacing: 4.0, 
+                      children: _availableSports.map((sport) {
+                        final isSelected = _selectedSports.contains(sport);
+                        return FilterChip(
+                          label: Text(sport),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedSports.add(sport);
+                              } else {
+                                _selectedSports.remove(sport);
+                              }
+                            });
+                          },
+                          selectedColor: Colors.green.shade100,
+                          checkmarkColor: Colors.green.shade800,
+                        );
+                      }).toList(),
+                    ),
                     const SizedBox(height: 40),
                      ElevatedButton(
                        style: ElevatedButton.styleFrom(
@@ -195,7 +236,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                        onPressed: _isLoading ? null : _saveProfile,
                        child: _isLoading
                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                           : const Text('SALVAR ALTERAÇÕES'),
+                           : const Text('SALVAR PERFIL'),
                      ),
                   ],
                 ),

@@ -1,5 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'report_screen.dart';
+import '../../screens/profile/edit_profile_screen.dart';
+import 'legal/privacy_policy_screen.dart';
+import 'legal/terms_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _eventNotifications = true;
   bool _teamInvites = true;
+  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; 
 
   @override
   Widget build(BuildContext context) {
@@ -29,15 +34,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.person_outline,
             title: 'Editar Perfil',
             subtitle: 'Altere seu nome, foto e bio',
-            onTap: () {},
+            onTap: () {
+              if (_currentUserId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => EditProfileScreen(userId: _currentUserId)),
+                );
+              }
+             },
           ),
-          _buildSettingsTile(
-            icon: Icons.lock_outline,
-            title: 'Alterar Senha',
-            subtitle: 'Mantenha sua conta segura',
-            onTap: () {},
-          ),
-          
           _buildSectionHeader('Notificações'),
           SwitchListTile(
             title: const Text('Novos Eventos', style: TextStyle(fontWeight: FontWeight.w500)),
@@ -68,12 +73,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSettingsTile(
             icon: Icons.privacy_tip_outlined,
             title: 'Política de Privacidade',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+              );
+            },
           ),
           _buildSettingsTile(
             icon: Icons.description_outlined,
             title: 'Termos de Uso',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TermsScreen()),
+              );
+            },
           ),
           _buildSettingsTile(
             icon: Icons.report_problem_outlined,

@@ -4,10 +4,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'api/notification_service.dart';
+import 'api/user_service.dart';
+import 'models/user_model.dart';
+import 'screens/profile/edit_profile_screen.dart';
 import 'firebase_options.dart';
 import 'screens/auth/login_screen.dart';
 
 final NotificationService _notificationService = NotificationService();
+final UserService _userService = UserService();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "api.env");
@@ -31,7 +35,6 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.grey[100],
         fontFamily: 'Poppins', 
 
-        // Tema para os Cards
         cardTheme: CardTheme(
           elevation: 2,
           shape: RoundedRectangleBorder(
@@ -39,13 +42,11 @@ class MyApp extends StatelessWidget {
           ),
         ),
 
-        // Tema para o Botão Flutuante
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: Colors.orangeAccent,
           foregroundColor: Colors.white,
         ),
 
-        // Tema para a Barra de Aplicativo
         appBarTheme: AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -59,13 +60,33 @@ class MyApp extends StatelessWidget {
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(), 
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, authSnapshot) {
+          if (authSnapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(body: Center(child: CircularProgressIndicator())); 
           }
-          if (snapshot.hasData) {
-            _notificationService.saveTokenAfterLogin(snapshot.data!.uid);
-            return const NewHomeScreen(); 
+          if (authSnapshot.hasData) {
+            _notificationService.saveTokenAfterLogin(authSnapshot.data!.uid);
+
+            return StreamBuilder<UserModel?>(
+              stream: _userService.getUserStream(authSnapshot.data!.uid),
+              builder: (context, userSnapshot) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                }
+              
+                if (!userSnapshot.hasData || userSnapshot.data == null) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                }
+
+                final userModel = userSnapshot.data!;
+
+                if (userModel.esportesInteresse.isEmpty) {
+                  return EditProfileScreen(userId: userModel.id);
+                } else {
+                  return const NewHomeScreen(); 
+                }
+              },
+            );
           }
           return const LoginScreen(); 
         },
