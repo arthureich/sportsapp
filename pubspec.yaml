@@ -71,6 +71,7 @@ flutter:
     - api.env
     - assets/images/
     - assets/icons/ 
+    - assets/markers/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

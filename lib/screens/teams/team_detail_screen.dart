@@ -21,6 +21,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   bool _isLoading = false; 
   bool _isCurrentUserMember = false; 
   bool _isCurrentUserAdmin = false;
+  // ignore: unused_field
   bool _hasUserRequested = false;
 
   @override
@@ -57,7 +58,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.grey[300],
-                      // TODO: Exibir imagem do emblema (team.crestUrl)
                       child: Icon(_getSportIcon(team.sport), size: 40, color: Colors.grey[700]),
                     ),
                     const SizedBox(width: 16),

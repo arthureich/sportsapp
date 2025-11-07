@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:ui';
+import 'package:flutter/services.dart'; 
+import 'dart:ui' as ui;
 import '../locations/predefined_location_detail_screen.dart';
 import '../events/event_detail_screen.dart';
 import '../../api/event_service.dart';
@@ -31,11 +33,80 @@ class _HomeContentState extends State<HomeContent> {
   bool _filterHasVacancies = false;
   TimeOfDay? _filterTime;
   final double _searchRadiusKm = 25.0;
+  final Map<String, BitmapDescriptor> _sportIcons = {};
+  final Map<String, PredefinedLocation> _predefinedLocationLookup = {};
+  BitmapDescriptor _emptyLocationIcon = BitmapDescriptor.defaultMarker;
+  BitmapDescriptor _activeLocationIcon = BitmapDescriptor.defaultMarker;
+  // ignore: unused_field
+  bool _areIconsLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchLocationAndLoadEvents();
+    for (var loc in predefinedLocationsCascavel) {
+      final key = '${loc.coordinates.latitude.toStringAsFixed(5)},${loc.coordinates.longitude.toStringAsFixed(5)}';
+      _predefinedLocationLookup[key] = loc;
+    }
+    _loadMarkerIcons().then((_) {
+      _fetchLocationAndLoadEvents();
+    });
+  }
+
+  Future<BitmapDescriptor> _getResizedAssetIcon(String path, int width) async {
+    final ByteData data = await rootBundle.load(path);
+    final ui.Codec codec = await ui.instantiateImageCodec(
+      data.buffer.asUint8List(),
+      targetWidth: width,
+    );
+    final ui.FrameInfo fi = await codec.getNextFrame();
+    final ByteData? byteData = await fi.image.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+  }
+
+  Future<void> _loadMarkerIcons() async {
+    const int markerWidth = 35; 
+
+    final iconsToLoad = {
+      'futebol': 'assets/markers/futebol.png',
+      'basquete': 'assets/markers/basquete.png',
+      'vôlei': 'assets/markers/volei.png',
+      'tênis': 'assets/markers/tenis.png',
+      'corrida': 'assets/markers/corrida.png',
+      'ciclismo': 'assets/markers/ciclismo.png',
+      'beach tennis': 'assets/markers/beach_tennis.png',
+      'futevôlei': 'assets/markers/futevolei.png',
+      'handebol': 'assets/markers/handebol.png',
+      'natação': 'assets/markers/natacao.png',
+      'padel': 'assets/markers/padel.png',
+      'skate': 'assets/markers/skate.png',
+      'outro': 'assets/markers/outro.png',
+    };
+
+    for (var entry in iconsToLoad.entries) {
+      try {
+        _sportIcons[entry.key] = await _getResizedAssetIcon(entry.value, markerWidth);
+      } catch (e) {
+        debugPrint("Erro ao carregar ícone ${entry.value}: $e. Usando padrão.");
+        _sportIcons[entry.key] = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+      }
+    }
+    
+    try {
+      _emptyLocationIcon = await _getResizedAssetIcon('assets/markers/EventlessArena.png', markerWidth);
+      _activeLocationIcon = await _getResizedAssetIcon('assets/markers/EventArena.png', markerWidth); 
+    } catch (e) {
+      _emptyLocationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+      _activeLocationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
+    }
+
+    if (mounted) {
+      setState(() => _areIconsLoading = false);
+    }
+  }
+
+  BitmapDescriptor _getIconForEvent(Event event) {
+    final sportKey = event.sport.toLowerCase();
+    return _sportIcons[sportKey] ?? _sportIcons['outro'] ?? BitmapDescriptor.defaultMarker;
   }
 
   Future<void> _fetchLocationAndLoadEvents() async {
@@ -102,7 +173,7 @@ class _HomeContentState extends State<HomeContent> {
               ),
             ),
           ),
-          
+        
         if (_locationError != null && !_isLoadingLocation)
            Positioned(
              top: 150,
@@ -133,53 +204,47 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildMap() {
-    final Map<String, PredefinedLocation> predefinedLocationMap = {
-      for (var loc in predefinedLocationsCascavel) 
-        '${loc.coordinates.latitude.toStringAsFixed(5)},${loc.coordinates.longitude.toStringAsFixed(5)}': loc
-    };
+    final Map<String, Marker> markers = {};
     if (_eventsStream == null) {
-      final Set<Marker> greenMarkers = predefinedLocationsCascavel.map((loc) {
-        return _createLocationMarker(loc, false); 
-      }).toSet();
+      for (var loc in predefinedLocationsCascavel) {
+        markers[loc.name] = _createEmptyLocationMarker(loc);
+      }
       return GoogleMap(
           initialCameraPosition: const CameraPosition(target: _initialPosition, zoom: 13),
           onMapCreated: (controller) => _mapController = controller,
-          markers: greenMarkers,
+          markers: markers.values.toSet(),
       );
     }
-    
     return StreamBuilder<List<Event>>(
       stream: _eventsStream,
       builder: (context, snapshot) {
-        Set<String> locationsWithEvents = {};
-        Set<Marker> markersToShow = {};
+        if (_selectedSport == 'Todos') {
+          for (var loc in predefinedLocationsCascavel) {
+             markers[loc.name] = _createEmptyLocationMarker(loc);
+          }
+        }
+
         if (snapshot.hasData) {
-          final allEvents = snapshot.data!;
+          final allEvents = snapshot.data!;         
           final filteredEvents = (_selectedSport == 'Todos')
               ? allEvents 
               : allEvents
                   .where((event) => event.sport == _selectedSport)
                   .toList();
-        for (final event in filteredEvents) {
-            final eventPosition = LatLng(
-                event.location.coordinates.latitude,
-                event.location.coordinates.longitude,
-              );
-            final eventPosKey = '${eventPosition.latitude.toStringAsFixed(5)},${eventPosition.longitude.toStringAsFixed(5)}';
-            if (predefinedLocationMap.containsKey(eventPosKey)) {
-              final loc = predefinedLocationMap[eventPosKey]!;
-              markersToShow.add(_createLocationMarker(loc, true)); 
-              locationsWithEvents.add(loc.name); 
+          
+          for (final event in filteredEvents) {    
+           final eventPosKey = '${event.location.coordinates.latitude.toStringAsFixed(5)},${event.location.coordinates.longitude.toStringAsFixed(5)}';
+            if (_predefinedLocationLookup.containsKey(eventPosKey)) {
+              final loc = _predefinedLocationLookup[eventPosKey]!;
+              markers[loc.name] = _createActiveLocationMarker(loc, allEvents);
+              
             } else {
-              markersToShow.add(_createEventMarker(event));
+              final icon = _getIconForEvent(event);
+              markers[event.id] = _createSportEventMarker(event, icon);
             }
           }
         }
-        for (final loc in predefinedLocationsCascavel) {
-          if (!locationsWithEvents.contains(loc.name)) {
-            markersToShow.add(_createLocationMarker(loc, false)); 
-          }
-        }
+
         return GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _currentPosition != null 
@@ -188,7 +253,7 @@ class _HomeContentState extends State<HomeContent> {
             zoom: 13,
           ),
           onMapCreated: (controller) => _mapController = controller,
-          markers: markersToShow,
+          markers: markers.values.toSet(), 
           myLocationEnabled: true,
           myLocationButtonEnabled: true,
         );
@@ -196,17 +261,17 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Marker _createEventMarker(Event event) {
+  Marker _createSportEventMarker(Event event, BitmapDescriptor icon) {
     return Marker(
       markerId: MarkerId(event.id),
       position: LatLng(
         event.location.coordinates.latitude,
         event.location.coordinates.longitude,
       ),
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), 
+      icon: icon, 
       infoWindow: InfoWindow(
         title: event.title,
-        snippet: "Clique para ver detalhes do evento",
+        snippet: "${event.sport} | Clique para ver detalhes",
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -218,18 +283,39 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Marker _createLocationMarker(PredefinedLocation loc, bool hasEvent) {
+  Marker _createEmptyLocationMarker(PredefinedLocation loc) {
     return Marker(
       markerId: MarkerId('loc_${loc.name}'),
       position: LatLng(loc.coordinates.latitude, loc.coordinates.longitude),
-      icon: BitmapDescriptor.defaultMarkerWithHue(
-        hasEvent ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueGreen
-      ),
+      icon: _emptyLocationIcon, 
       infoWindow: InfoWindow(
         title: loc.name,
-        snippet: hasEvent 
-          ? "Local com eventos! Clique para ver." 
-          : "Local livre. Clique para ver.",
+        snippet: "Local livre. Clique para ver detalhes.",
+        onTap: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => PredefinedLocationDetailScreen(location: loc),
+          ));
+        },
+      ),
+    );
+  }
+
+  Marker _createActiveLocationMarker(PredefinedLocation loc, List<Event> allEvents) {
+    final eventCount = allEvents.where((e) => 
+        e.location.name == loc.name || 
+        (
+          e.location.coordinates.latitude.toStringAsFixed(5) == loc.coordinates.latitude.toStringAsFixed(5) &&
+          e.location.coordinates.longitude.toStringAsFixed(5) == loc.coordinates.longitude.toStringAsFixed(5)
+        )
+    ).length;
+
+    return Marker(
+      markerId: MarkerId('loc_${loc.name}'), 
+      position: LatLng(loc.coordinates.latitude, loc.coordinates.longitude),
+      icon: _activeLocationIcon, 
+      infoWindow: InfoWindow(
+        title: loc.name,
+        snippet: "$eventCount evento(s) encontrado(s). Clique para ver.",
         onTap: () {
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) => PredefinedLocationDetailScreen(location: loc),
