@@ -56,7 +56,6 @@ class Location {
     return Location(
       name: _getOrDefault(data, 'name', 'Localização Indisponível'),
       address: _getOrDefault(data, 'address', ''),
-      // 3. Lê o GeoPoint do Firestore
       coordinates: _getOrDefault(data, 'coordinates', const GeoPoint(0, 0)),
     );
   }

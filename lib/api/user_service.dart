@@ -67,7 +67,7 @@ Future<List<UserModel>> getUsersData(List<String> userIds) async {
     }
   }
   Future<void> addFcmToken(String userId, String token) async {
-    if (token.isEmpty) return; // Não salva tokens vazios
+    if (token.isEmpty) return; 
     try {
       await _usersCollection.doc(userId).update({
         'fcmTokens': FieldValue.arrayUnion([token])

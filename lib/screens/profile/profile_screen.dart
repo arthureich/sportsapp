@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
+import 'report_screen.dart';
 import 'settings_screen.dart';
 import 'edit_profile_screen.dart';
 import '../events/event_detail_screen.dart';
@@ -617,13 +618,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Divider(height: 20),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    icon: const Icon(Icons.star_outline, size: 18),
-                    label: const Text('AVALIAR EVENTO'),
-                    onPressed: onRatePressed,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.orangeAccent,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.report_problem_outlined, size: 18),
+                        label: const Text('REPORTAR'),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ReportScreen(
+                                prefilledEventId: event.id,
+                                prefilledEventName: event.title,
+                              ),
+                            ),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red[700],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      TextButton.icon(
+                        icon: const Icon(Icons.star_outline, size: 18),
+                        label: const Text('AVALIAR EVENTO'),
+                        onPressed: onRatePressed,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.orangeAccent,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ]

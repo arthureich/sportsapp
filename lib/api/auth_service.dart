@@ -107,7 +107,7 @@ class AuthService {
             'email': user.email ?? '',
             'fotoUrl': user.photoURL ?? '',
             'bio': '', 
-            'esportesInteresse': [], // Lista vazia
+            'esportesInteresse': [], 
             'scoreEsportividade': 5.0,
             'createdAt': FieldValue.serverTimestamp(),
             'fcmTokens': [],

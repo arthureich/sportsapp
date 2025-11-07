@@ -28,7 +28,6 @@ class Rating {
         'createdAt': createdAt,
       };
 
-  // Cria a partir de um snapshot do Firestore
   factory Rating.fromSnapshot(DocumentSnapshot snap) {
     final data = snap.data() as Map<String, dynamic>;
     return Rating(

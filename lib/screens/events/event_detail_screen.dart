@@ -87,7 +87,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _deleteEvent() async {
-    // Confirmação
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -107,7 +106,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
     );
 
-    if (confirm != true) return; // Se não confirmou, sai
+    if (confirm != true) return; 
 
     setState(() => _isLoading = true);
     try {
@@ -116,7 +115,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Evento excluído com sucesso.')),
         );
-        Navigator.of(context).pop(); // Volta para a tela anterior
+        Navigator.of(context).pop(); 
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -128,13 +127,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
   
-  // --- LÓGICA DE APROVAR PARTICIPANTE ---
   Future<void> _approveParticipant(LocalUser userToApprove) async {
      setState(() => _isLoading = true);
      try {
        await _eventService.approveParticipant(widget.event.id, userToApprove);
      } catch (e) {
-       // ... (snackbar de erro)
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao aprovar participante: $e')),
+          );
+        } 
      } finally {
        setState(() => _isLoading = false);
      }
@@ -214,7 +216,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   _buildOrganizerInfo(event.organizer),
                   const SizedBox(height: 20),
                   
-                  // --- SEÇÃO DE SOLICITAÇÕES PENDENTES (SÓ PARA O ORGANIZADOR) ---
                   if (_isCurrentUserOrganizer && event.pendingParticipants.isNotEmpty)
                     _buildPendingParticipantsSection(event),
                   const Padding(
@@ -302,9 +303,8 @@ Widget _buildBottomButton(Event event, bool isFull) {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent),
           ),
           const SizedBox(height: 10),
-          // Lista de usuários pendentes
           ListView.builder(
-            shrinkWrap: true, // Para caber dentro do SliverList
+            shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: event.pendingParticipants.length,
             itemBuilder: (context, index) {
@@ -415,7 +415,7 @@ Widget _buildBottomButton(Event event, bool isFull) {
                   child: CircleAvatar(
                     backgroundImage: NetworkImage(user.avatarUrl.isNotEmpty
                         ? user.avatarUrl
-                        : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'), // <-- AQUI NÃO MUDA (LocalUser não tem 'genero')
+                        : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'),
                      onBackgroundImageError: (exception, stackTrace) {},
                      radius: 18,
                   ),

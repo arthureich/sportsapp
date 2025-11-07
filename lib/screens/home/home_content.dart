@@ -168,7 +168,7 @@ class _HomeContentState extends State<HomeContent> {
             final eventPosKey = '${eventPosition.latitude.toStringAsFixed(5)},${eventPosition.longitude.toStringAsFixed(5)}';
             if (predefinedLocationMap.containsKey(eventPosKey)) {
               final loc = predefinedLocationMap[eventPosKey]!;
-              markersToShow.add(_createLocationMarker(loc, true)); // true = com evento
+              markersToShow.add(_createLocationMarker(loc, true)); 
               locationsWithEvents.add(loc.name); 
             } else {
               markersToShow.add(_createEventMarker(event));
@@ -666,7 +666,7 @@ class _HomeContentState extends State<HomeContent> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)), //
+            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)), 
           );
         },
         borderRadius: BorderRadius.circular(16),

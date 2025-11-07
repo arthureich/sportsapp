@@ -10,6 +10,7 @@ class ReportService {
     required String description,
     String? reportedUserId,
     String? reportedLocationName,
+    String? reportedEventId,
   }) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -23,6 +24,7 @@ class ReportService {
       'description': description,
       'reportedUserId': reportedUserId,
       'reportedLocationName': reportedLocationName,
+      'reportedEventId': reportedEventId,
       'createdAt': FieldValue.serverTimestamp(),
       'status': 'pending', 
     });

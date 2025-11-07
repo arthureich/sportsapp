@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import '../../api/report_service.dart';
 
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key});
+  final String? prefilledEventId;
+  final String? prefilledEventName;
+
+  const ReportScreen({
+    super.key,
+    this.prefilledEventId,
+    this.prefilledEventName,
+  });
 
   @override
   State<ReportScreen> createState() => _ReportScreenState();
@@ -14,10 +21,22 @@ class _ReportScreenState extends State<ReportScreen> {
   final ReportService _reportService = ReportService();
   bool _isLoading = false;
 
-  String _reportType = 'Problema no App'; // Valor inicial
-  final List<String> _reportTypes = ['Problema no App', 'Reportar Usuário', 'Reportar Local'];
-
+  String _reportType = 'Problema no App'; 
+  final List<String> _reportTypes = ['Problema no App', 'Reportar Evento', 'Reportar Usuário', 'Reportar Local'];
   final _reportedItemController = TextEditingController(); 
+  bool _isItemReadOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.prefilledEventId != null) {
+      setState(() {
+        _reportType = 'Reportar Evento';
+        _reportedItemController.text = widget.prefilledEventName ?? widget.prefilledEventId!;
+        _isItemReadOnly = true; 
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -37,6 +56,8 @@ class _ReportScreenState extends State<ReportScreen> {
         description: _descriptionController.text,
         reportedUserId: _reportType == 'Reportar Usuário' ? _reportedItemController.text : null,
         reportedLocationName: _reportType == 'Reportar Local' ? _reportedItemController.text : null,
+        reportedEventId: _reportType == 'Reportar Evento' ? (widget.prefilledEventId 
+        ?? _reportedItemController.text) : null,
       );
       
       if (mounted) {
@@ -59,6 +80,23 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool showItemField = _reportType == 'Reportar Usuário' || 
+                         _reportType == 'Reportar Local' || 
+                         _reportType == 'Reportar Evento';
+    
+    String itemLabel = 'Item a ser reportado';
+    String itemHint = '';
+
+    if (_reportType == 'Reportar Usuário') {
+      itemLabel = 'ID do Usuário';
+      itemHint = 'Cole o ID do perfil do usuário';
+    } else if (_reportType == 'Reportar Local') {
+      itemLabel = 'Nome do Local';
+      itemHint = 'Nome do local pré-definido';
+    } else if (_reportType == 'Reportar Evento') {
+      itemLabel = 'Evento';
+      itemHint = 'Nome ou ID do Evento';
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reportar um Problema'),
@@ -74,29 +112,35 @@ class _ReportScreenState extends State<ReportScreen> {
                 decoration: _buildInputDecoration(label: 'Tipo de Relatório'),
                 value: _reportType,
                 items: _reportTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
-                onChanged: (value) => setState(() => _reportType = value ?? 'Problema no App'),
+                onChanged: _isItemReadOnly 
+                  ? null 
+                  : (value) => setState(() {
+                      _reportType = value ?? 'Problema no App';
+                      if (!_isItemReadOnly) {
+                        _reportedItemController.clear();
+                      }
+                    }),
               ),
               const SizedBox(height: 20),
 
-              if (_reportType == 'Reportar Usuário' || _reportType == 'Reportar Local')
+              if (showItemField)
                 TextFormField(
                   controller: _reportedItemController,
+                  readOnly: _isItemReadOnly, 
                   decoration: _buildInputDecoration(
-                    label: _reportType == 'Reportar Usuário' ? 'ID do Usuário' : 'Nome do Local',
-                    hint: _reportType == 'Reportar Usuário' ? 'Cole o ID do perfil do usuário' : 'Nome do local pré-definido'
+                    label: itemLabel,
+                    hint: itemHint
                   ),
                   validator: (value) => (value == null || value.isEmpty) ? 'Este campo é obrigatório.' : null,
                 ),
-                
               const SizedBox(height: 20),
-              
+
               TextFormField(
                 controller: _descriptionController,
                 decoration: _buildInputDecoration(label: 'Descrição', hint: 'Descreva o que aconteceu...'),
                 maxLines: 5,
                 validator: (value) => (value == null || value.length < 10) ? 'Descreva com pelo menos 10 caracteres.' : null,
               ),
-              const SizedBox(height: 40),
 
               ElevatedButton(
                 style: ElevatedButton.styleFrom(

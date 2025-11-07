@@ -26,12 +26,10 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       appBar: AppBar(
         title: const Text('Selecione o Local do Evento'),
         actions: [
-          // Botão para confirmar a seleção
           if (_pickedLocation != null)
             IconButton(
               icon: const Icon(Icons.check),
               onPressed: () {
-                // Retorna a localização selecionada para a tela anterior
                 Navigator.of(context).pop(
                   GeoPoint(_pickedLocation!.latitude, _pickedLocation!.longitude)
                 );

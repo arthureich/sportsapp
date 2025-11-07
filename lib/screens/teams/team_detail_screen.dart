@@ -123,7 +123,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
              return ElevatedButton(
                style: ElevatedButton.styleFrom(
-                 backgroundColor: isMember ? Colors.redAccent : (full ? Colors.grey : Colors.green), // Muda cor
+                 backgroundColor: isMember ? Colors.redAccent : (full ? Colors.grey : Colors.green), 
                  foregroundColor: Colors.white,
                  padding: const EdgeInsets.symmetric(vertical: 16.0),
                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -189,7 +189,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                itemCount: memberIds.length,
                itemBuilder: (context, index) => Padding(
                  padding: const EdgeInsets.only(right: 8.0),
-                 child: CircleAvatar(radius: 20, child: Text(memberIds[index].substring(0, 1))), // Mostra inicial do ID
+                 child: CircleAvatar(radius: 20, child: Text(memberIds[index].substring(0, 1))), 
                ),
              );
            }
@@ -208,7 +208,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                      radius: 20,
                       backgroundImage: NetworkImage(user.fotoUrl.isNotEmpty
                           ? user.fotoUrl
-                          : 'https://avatar.iran.liara.run/public/${user.genero}?username=${user.id}'), // <-- ATUALIZADO
+                          : 'https://avatar.iran.liara.run/public/${user.genero}?username=${user.id}'), 
                       onBackgroundImageError: (e, s) {},
                    ),
                  ),

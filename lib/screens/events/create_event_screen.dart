@@ -131,7 +131,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
      final filtered = predefinedLocationsCascavel
          .where((loc) =>
               loc.name.toLowerCase().contains(inputText.toLowerCase()) ||
-              loc.description.toLowerCase().contains(inputText.toLowerCase()) // Busca na descrição também
+              loc.description.toLowerCase().contains(inputText.toLowerCase()) 
           )
          .toList();
 
@@ -479,7 +479,7 @@ if (!_formKey.currentState!.validate()){
                     suffixIcon: _isPredefinedLocation
                       ? const Icon(Icons.lock, color: Colors.grey)
                       : (_isPredictionLoading || _isDetailsLoading
-                        ? Container( width: 24, height: 24, padding: const EdgeInsets.all(12.0), child: const CircularProgressIndicator(strokeWidth: 2)) // seu loading
+                        ? Container( width: 24, height: 24, padding: const EdgeInsets.all(12.0), child: const CircularProgressIndicator(strokeWidth: 2)) 
                         : _locationController.text.isNotEmpty
                           ? IconButton(icon: const Icon(Icons.clear), onPressed: () => _locationController.clear())
                           : const Icon(Icons.search)
