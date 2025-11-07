@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:google_maps_apis/places.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import '../../data/predefined_locations.dart';
 import '../../api/event_service.dart';
 import '../../models/event_model.dart' as event_model;
@@ -50,7 +51,21 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   List<PredefinedLocation> _filteredPredefinedLocations = [];
 
   late GoogleMapsPlaces _places;
-  final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Outro'];
+  final List<String> _sports = const [
+      'Basquete',
+      'Beach Tennis',
+      'Ciclismo',
+      'Corrida',
+      'Futebol',
+      'Futevôlei',
+      'Handebol',
+      'Natação',
+      'Padel',
+      'Skate',
+      'Tênis',
+      'Vôlei',
+      'Outro'
+  ];
   final List<String> _skillLevels = ['Todos', 'Iniciante', 'Intermediário', 'Avançado'];
   final EventService _eventService = EventService();
   bool _showOtherSportField = false;
@@ -108,15 +123,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
    if (_debounce?.isActive ?? false) _debounce!.cancel();
    _debounce = Timer(const Duration(milliseconds: 300), () {
      final inputText = _locationController.text;
-     // Define o nome selecionado (pode ser de API ou pré-definido)
      final selectedName = _selectedPredefinedLocation?.name ?? _placeDetails?.name ?? _placeDetails?.formattedAddress;
 
-     // Limpa seleção anterior se o texto mudar E não for o nome já selecionado
      if (_selectedGeoPoint != null && inputText != selectedName) {
        if (mounted) setState(() { _selectedGeoPoint = null; _placeDetails = null; _selectedPredefinedLocation = null; });
      }
-
-     // Filtra locais pré-definidos
      final filtered = predefinedLocationsCascavel
          .where((loc) =>
               loc.name.toLowerCase().contains(inputText.toLowerCase()) ||
@@ -129,12 +140,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
          _filteredPredefinedLocations = filtered;
        });
      }
-
-     // Busca na API se o texto for > 2 caracteres E não houver uma seleção válida ainda
      if (inputText.length > 2 && _selectedGeoPoint == null) {
        _fetchAutocompleteSuggestions(inputText);
      } else if (inputText.isEmpty) {
-       // Se o campo está vazio, mostra todos os pré-definidos e limpa API
        if (mounted) {
          setState(() {
            _filteredPredefinedLocations = predefinedLocationsCascavel;
@@ -145,7 +153,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
          });
        }
      } else {
-        // Se o texto for curto ou já houver seleção, limpa apenas as sugestões da API
         if (mounted) {
            setState(() { _apiPredictions = []; });
         }
@@ -183,9 +190,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   Future<void> _handleSelection(dynamic selection) async {
      if (selection is Prediction) {
-        await _fetchPlaceDetails(selection); // Chama busca de detalhes da API
+        await _fetchPlaceDetails(selection); 
      } else if (selection is PredefinedLocation) {
-        _selectPredefinedLocation(selection); // Seleciona local pré-definido
+        _selectPredefinedLocation(selection); 
      }
  }
 
@@ -193,16 +200,16 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
    if (!mounted) return;
    setState(() {
      _locationController.removeListener(_onSearchChanged);
-     _locationController.text = location.name; // Atualiza o campo de texto
+     _locationController.text = location.name; 
      _locationController.addListener(_onSearchChanged);
 
-     _selectedGeoPoint = location.coordinates; // Guarda as coordenadas
-     _selectedPredefinedLocation = location; // Guarda o local pré-definido selecionado
-     _placeDetails = null; // Limpa detalhes da API
-     _apiPredictions = []; // Limpa sugestões da API
-     _filteredPredefinedLocations = []; // Esconde a lista
+     _selectedGeoPoint = location.coordinates; 
+     _selectedPredefinedLocation = location; 
+     _placeDetails = null; 
+     _apiPredictions = []; 
+     _filteredPredefinedLocations = []; 
    });
-   FocusScope.of(context).unfocus(); // Esconde o teclado
+   FocusScope.of(context).unfocus(); 
    debugPrint("Pré-definido selecionado: ${location.name}");
  }
 
@@ -256,29 +263,39 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   Future<void> _saveEvent() async {
     setState(() => _isLoading = true);
-    if (!_formKey.currentState!.validate()){return; }
+if (!_formKey.currentState!.validate()){
+      setState(() => _isLoading = false); 
+      return; 
+    }
     if (_selectedGeoPoint == null || _locationController.text.isEmpty) { 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecione uma localização válida.')));
+       setState(() => _isLoading = false); 
        return; }
     if (_selectedDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Por favor, selecione a data do evento.')),
         );
+        setState(() => _isLoading = false); 
         return;
     }
     if (_selectedTime == null) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Por favor, selecione a hora do evento.')),
         );
+        setState(() => _isLoading = false); 
         return;
     }
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) { 
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você precisa estar logado para criar um evento.')));
+       setState(() => _isLoading = false); 
        return; }
+    
+    setState(() => _isLoading = true);
+    
     final locationName = _selectedPredefinedLocation?.name ?? _placeDetails?.name ?? _locationController.text;
     final locationAddress = _placeDetails?.formattedAddress ?? (_selectedPredefinedLocation != null ? _selectedPredefinedLocation!.description : '');
-    setState(() => _isLoading = true);
+
     final String sportName;
     if (_selectedSport == 'Outro') {
       sportName = _otherSportController.text.trim();
@@ -403,17 +420,32 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(labelText: 'Esporte', border: OutlineInputBorder()),
-                value: _selectedSport,
-                items: _sports.map((String sport) => DropdownMenuItem<String>(value: sport, child: Text(sport))).toList(),
+              DropdownSearch<String>(
+                items: (f, cs) => _sports,
+                selectedItem: _selectedSport,
+                validator: (value) => value == null ? 'Selecione um esporte' : null,
+                decoratorProps: DropDownDecoratorProps(
+                    decoration: InputDecoration(
+                      labelText: 'Esporte',
+                      border: OutlineInputBorder(),
+                ),
+                ),
+                popupProps: const PopupProps.menu(
+                  showSearchBox: true,
+                  searchFieldProps: TextFieldProps(
+                    decoration: InputDecoration(
+                      hintText: "Buscar esporte...",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  fit: FlexFit.loose, 
+                ),
                 onChanged: (newValue) {
                   setState(() {
                     _selectedSport = newValue;
                     _showOtherSportField = (newValue == 'Outro');
                   });
                 },
-                validator: (value) => value == null ? 'Selecione um esporte' : null,
               ),
               if (_showOtherSportField)
                 Padding(

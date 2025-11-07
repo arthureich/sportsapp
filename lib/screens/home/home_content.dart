@@ -340,6 +340,10 @@ class _HomeContentState extends State<HomeContent> {
   }
   
   Widget _buildTopFilterBars() {
+    final List<String> filterSports = [
+      'Todos', 'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 
+      'Futevôlei', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei'
+    ];
     return Positioned(
       top: MediaQuery.of(context).padding.top + 10,
       left: 16,
@@ -353,7 +357,7 @@ class _HomeContentState extends State<HomeContent> {
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1), // Corrigido
+                  color: Colors.black.withValues(alpha: 0.1), 
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -375,7 +379,7 @@ class _HomeContentState extends State<HomeContent> {
                   height: 40,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children: ['Todos', 'Futebol', 'Vôlei', 'Basquete', 'Corrida', 'Tênis']
+                    children: filterSports 
                         .map((sport) => _buildSportFilterChip(sport))
                         .toList(),
                   ),

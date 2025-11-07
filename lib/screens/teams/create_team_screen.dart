@@ -23,7 +23,10 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
   bool _isPublic = true;
   double _maxMembers = 10.0;
 
-  final List<String> _sports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Outro'];
+  final List<String> _sports = const [
+  'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 
+  'Futevôlei', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei', 'Outro'
+];
   final TeamService _teamService = TeamService();
   final StorageService _storageService = StorageService();
   final ImagePicker _picker = ImagePicker();

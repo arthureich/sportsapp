@@ -25,7 +25,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   UserModel? _currentUserData; 
   File? _pickedImage;
   final List<String> _selectedSports = [];
-  final List<String> _availableSports = ['Futebol', 'Basquete', 'Vôlei', 'Tênis', 'Corrida', 'Ciclismo', 'Natação', 'Outro'];
+  final List<String> _availableSports = const [
+  'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 
+  'Futevôlei', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei', 'Outro'
+];
 
   @override
   void initState() {
