@@ -20,6 +20,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid;
   bool _isLoading = false; 
   bool _isCurrentUserMember = false; 
+  bool _isCurrentUserAdmin = false;
+  bool _hasUserRequested = false;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
           final team = snapshot.data!;
           _isCurrentUserMember = _currentUserId != null && team.memberIds.contains(_currentUserId);
+          _isCurrentUserAdmin = _currentUserId != null && team.adminId == _currentUserId;
+          _hasUserRequested = _currentUserId != null && team.pendingMemberIds.contains(_currentUserId);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -76,7 +80,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                    Text(team.description, style: const TextStyle(fontSize: 16, height: 1.4)),
                    const SizedBox(height: 24),
                 ],
-
+                  
                  const Text("Membros", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                  const SizedBox(height: 8),
                  Row(
@@ -95,6 +99,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                    ],
                  ),
                  const SizedBox(height: 24),
+                 if (_isCurrentUserAdmin && team.pendingMemberIds.isNotEmpty)
+                    _buildPendingMembersSection(team.pendingMemberIds),
                  const Text("Lista de Membros", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                  const SizedBox(height: 8),
                  _buildMemberList(team.memberIds), 
@@ -110,37 +116,73 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
          child: StreamBuilder<Team?>( 
            stream: _teamService.getTeamStream(widget.teamId),
            builder: (context, snapshot) {
-              bool isMember = false;
-              bool teamExists = false;
-              bool full = false;
+              if (!snapshot.hasData || snapshot.data == null) {
+                return const ElevatedButton(onPressed: null, child: Text("CARREGANDO..."));
+              }
+              
+              final team = snapshot.data!;
+              final isMember = _currentUserId != null && team.memberIds.contains(_currentUserId);
+              final hasRequested = _currentUserId != null && team.pendingMemberIds.contains(_currentUserId);
+              final isFull = team.currentMembers >= team.maxMembers;
+              final isAdmin = team.adminId == _currentUserId;
 
-              if (snapshot.hasData && snapshot.data != null) {
-                  teamExists = true;
-                  final team = snapshot.data!;
-                  isMember = _currentUserId != null && team.memberIds.contains(_currentUserId);
-                  full = team.currentMembers >= team.maxMembers;
+              // --- 5. LÓGICA DO BOTÃO ATUALIZADA ---
+              
+              // Se for admin, não mostra o botão (ou poderia mostrar "Gerenciar")
+              if (isAdmin) {
+                return const SizedBox.shrink(); 
               }
 
-             return ElevatedButton(
-               style: ElevatedButton.styleFrom(
-                 backgroundColor: isMember ? Colors.redAccent : (full ? Colors.grey : Colors.green), 
-                 foregroundColor: Colors.white,
-                 padding: const EdgeInsets.symmetric(vertical: 16.0),
-                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                 disabledBackgroundColor: Colors.grey.shade400,
-               ),
-               onPressed: (_isLoading || !teamExists || (full && !isMember)) ? null : _toggleMembership,
-               child: _isLoading
-                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                   : Text(isMember ? "SAIR DA EQUIPE" : (full ? "EQUIPE LOTADA" : "ENTRAR NA EQUIPE")),
+              // Se for membro, mostra "Sair"
+              if (isMember) {
+                return ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                  onPressed: _isLoading ? null : () => _toggleMembership(team),
+                  child: _isLoading ? _loadingIndicator() : const Text("SAIR DA EQUIPE"),
+                );
+              }
+              
+              // Se já solicitou, mostra "Solicitação Enviada"
+              if (hasRequested) {
+                return const ElevatedButton(
+                  onPressed: null,
+                  style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey)),
+                  child: Text("SOLICITAÇÃO ENVIADA"),
+                );
+              }
+
+              // Se estiver lotada (e ele não for membro/pendente), mostra "Lotada"
+              if (isFull) {
+                return const ElevatedButton(
+                  onPressed: null,
+                  style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey)),
+                  child: Text("EQUIPE LOTADA"),
+                );
+              }
+
+              // Se for privada e não estiver lotada, mostra "Solicitar Entrada"
+              if (!team.isPublic) {
+                 return ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                  onPressed: _isLoading ? null : () => _toggleMembership(team),
+                  child: _isLoading ? _loadingIndicator() : const Text("SOLICITAR ENTRADA"),
+                );
+              }
+
+              // Senão (é pública, tem vaga, não é membro), mostra "Entrar"
+              return ElevatedButton(
+               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+               onPressed: _isLoading ? null : () => _toggleMembership(team),
+               child: _isLoading ? _loadingIndicator() : const Text("ENTRAR NA EQUIPE"),
              );
+             // --- FIM DA LÓGICA DO BOTÃO ---
            }
          ),
        ),
     );
   }
 
-  Future<void> _toggleMembership() async {
+  Future<void> _toggleMembership(Team team) async {
     if (_currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Faça login para interagir com equipes.')),
@@ -151,12 +193,20 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Se já é membro, ele só pode sair
       if (_isCurrentUserMember) {
         await _teamService.leaveTeam(widget.teamId, _currentUserId);
          if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você saiu da equipe.')));
-      } else {
+      } 
+      // Se for pública, ele entra direto
+      else if (team.isPublic) {
         await _teamService.joinTeam(widget.teamId, _currentUserId);
          if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você entrou na equipe!')));
+      } 
+      // Se for privada, ele solicita
+      else {
+        await _teamService.requestToJoinTeam(widget.teamId, _currentUserId);
+        if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Solicitação enviada!')));
       }
     } catch (e) {
       if (mounted) {
@@ -171,6 +221,91 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     }
   }
 
+  Widget _loadingIndicator() {
+    return const SizedBox(
+      height: 20, 
+      width: 20, 
+      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+    );
+  }
+
+  // Constrói a lista de membros pendentes (só para o admin)
+  Widget _buildPendingMembersSection(List<String> pendingMemberIds) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Solicitações Pendentes (${pendingMemberIds.length})",
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+        ),
+        const SizedBox(height: 10),
+        FutureBuilder<List<UserModel>>(
+          future: _userService.getUsersData(pendingMemberIds),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final users = snapshot.data!;
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                final user = users[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: NetworkImage(user.fotoUrl.isNotEmpty
+                        ? user.fotoUrl
+                        : 'https://avatar.iran.liara.run/public/${user.genero}?username=${user.id}'),
+                  ),
+                  title: Text(user.nome),
+                  trailing: _isLoading
+                      ? const CircularProgressIndicator()
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: () => _rejectMember(user.id),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.check, color: Colors.green),
+                              onPressed: () => _approveMember(user.id),
+                            ),
+                          ],
+                        ),
+                );
+              },
+            );
+          },
+        ),
+        const Divider(height: 30),
+      ],
+    );
+  }
+
+  Future<void> _approveMember(String userId) async {
+    setState(() => _isLoading = true);
+    try {
+      await _teamService.approveMember(widget.teamId, userId);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e")));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _rejectMember(String userId) async {
+     setState(() => _isLoading = true);
+    try {
+      await _teamService.rejectMember(widget.teamId, userId);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erro: $e")));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+  
   Widget _buildMemberList(List<String> memberIds) {
     if (memberIds.isEmpty) {
       return const Text("Nenhum membro ainda.", style: TextStyle(color: Colors.grey));

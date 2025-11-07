@@ -53,4 +53,38 @@ class TeamService {
        return null;
      });
    }
+
+   Future<void> requestToJoinTeam(String teamId, String userId) async {
+    try {
+      await _teamsCollection.doc(teamId).update({
+        'pendingMemberIds': FieldValue.arrayUnion([userId])
+      });
+    } catch (e) {
+      debugPrint("Erro ao solicitar entrada na equipe: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> approveMember(String teamId, String userId) async {
+    try {
+      await _teamsCollection.doc(teamId).update({
+        'pendingMemberIds': FieldValue.arrayRemove([userId]),
+        'memberIds': FieldValue.arrayUnion([userId])
+      });
+    } catch (e) {
+      debugPrint("Erro ao aprovar membro: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> rejectMember(String teamId, String userId) async {
+    try {
+      await _teamsCollection.doc(teamId).update({
+        'pendingMemberIds': FieldValue.arrayRemove([userId])
+      });
+    } catch (e) {
+      debugPrint("Erro ao rejeitar membro: $e");
+      rethrow;
+    }
+  }
 }

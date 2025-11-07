@@ -10,6 +10,8 @@ class Team {
   final int maxMembers;
   final bool isPublic;
   final List<String> memberIds;
+  final String adminId;          
+  final List<String> pendingMemberIds;
 
   Team({
     required this.id,
@@ -21,6 +23,8 @@ class Team {
     required this.maxMembers,
     required this.isPublic,
     required this.memberIds,
+    required this.adminId,          
+    required this.pendingMemberIds,
   });
 
   Map<String, dynamic> toJson() => {
@@ -31,6 +35,8 @@ class Team {
         'maxMembers': maxMembers,
         'isPublic': isPublic,
         'memberIds': memberIds,
+        'adminId': adminId,          
+        'pendingMemberIds': pendingMemberIds,
       };
 
   factory Team.fromSnapshot(DocumentSnapshot snapshot) {
@@ -39,6 +45,11 @@ class Team {
     List<String> members = [];
     if (data['memberIds'] is List) {
       members = List<String>.from(data['memberIds']);
+    }
+
+    List<String> pendingMembers = [];
+    if (data['pendingMemberIds'] is List) {
+      pendingMembers = List<String>.from(data['pendingMemberIds']);
     }
 
     return Team(
@@ -51,6 +62,8 @@ class Team {
       maxMembers: data['maxMembers'] ?? 0,
       isPublic: data['isPublic'] ?? true,
       memberIds: members, 
+      adminId: data['adminId'] ?? (members.isNotEmpty ? members.first : ''), 
+      pendingMemberIds: pendingMembers,
     );
   }
 }
