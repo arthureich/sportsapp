@@ -32,8 +32,8 @@ class _ProfileDataBundle {
 }
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
-
+  final String? userId;
+  const ProfileScreen({super.key, this.userId});
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -42,8 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
   final EventService _eventService = EventService();
   final AuthService _authService = AuthService();
-  final String? _currentUserId = FirebaseAuth.instance.currentUser?.uid; 
-
+  late final String? _profileUserId;
+  late final String? _currentUserId;
+  late final bool _isMyProfile;
   final RatingService _ratingService = RatingService();
   final TeamService _teamService = TeamService();
   bool _isRating = false;
@@ -52,14 +53,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    if (_currentUserId != null) {
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    _profileUserId = widget.userId ?? _currentUserId; 
+    _isMyProfile = (_profileUserId == _currentUserId);
+    if (_profileUserId != null) {
       _profileDataStream = ZipStream.zip3(
-        _userService.getUserStream(_currentUserId),
+        _userService.getUserStream(_profileUserId!), 
         _eventService.getAllEvents(),
         _teamService.getTeams(),
         (UserModel? user, List<Event> events, List<Team> teams) => 
           _ProfileDataBundle(user: user, allEvents: events, allTeams: teams)
-      ).asBroadcastStream(); 
+      ).asBroadcastStream();
     }
   }
 
@@ -96,7 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_currentUserId == null) {
+    if (_profileUserId == null) {
       return const Scaffold(
         body: Center(
           child: Text("Usuário não está logado."),
@@ -107,145 +111,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
       length: 3, 
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Meu Perfil'),
+          title: Text(_isMyProfile ? 'Meu Perfil' : 'Perfil de Usuário'),
           centerTitle: true,
           actions: [
-            PopupMenuButton<ProfileMenuOption>(
-              onSelected: (option) => _onMenuOptionSelected(context, option),
-              icon: const Icon(Icons.more_vert), 
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<ProfileMenuOption>>[
-                const PopupMenuItem<ProfileMenuOption>(
-                  value: ProfileMenuOption.editProfile,
-                  child: ListTile(
-                    leading: Icon(Icons.edit_outlined),
-                    title: Text('Editar Perfil'),
+            if (_isMyProfile)
+              PopupMenuButton<ProfileMenuOption>(
+                onSelected: (option) => _onMenuOptionSelected(context, option),
+                icon: const Icon(Icons.more_vert), 
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<ProfileMenuOption>>[
+                  const PopupMenuItem<ProfileMenuOption>(
+                    value: ProfileMenuOption.editProfile,
+                    child: ListTile(
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Editar Perfil'),
+                    ),
                   ),
-                ),
-                const PopupMenuItem<ProfileMenuOption>(
-                  value: ProfileMenuOption.settings,
-                  child: ListTile(
-                    leading: Icon(Icons.settings_outlined),
-                    title: Text('Configurações'),
+                  const PopupMenuItem<ProfileMenuOption>(
+                    value: ProfileMenuOption.settings,
+                    child: ListTile(
+                      leading: Icon(Icons.settings_outlined),
+                      title: Text('Configurações'),
+                    ),
                   ),
-                ),
-                const PopupMenuItem<ProfileMenuOption>(
-                  value: ProfileMenuOption.faq,
-                  child: ListTile(
-                    leading: Icon(Icons.quiz_outlined),
-                    title: Text('FAQ'),
+                  const PopupMenuItem<ProfileMenuOption>(
+                    value: ProfileMenuOption.faq,
+                    child: ListTile(
+                      leading: Icon(Icons.quiz_outlined),
+                      title: Text('FAQ'),
+                    ),
                   ),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem<ProfileMenuOption>(
-                  value: ProfileMenuOption.logout,
-                  child: ListTile(
-                    leading: Icon(Icons.logout, color: Colors.red),
-                    title: Text('Sair', style: TextStyle(color: Colors.red)),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<ProfileMenuOption>(
+                    value: ProfileMenuOption.logout,
+                    child: ListTile(
+                      leading: Icon(Icons.logout, color: Colors.red),
+                      title: Text('Sair', style: TextStyle(color: Colors.red)),
+                    ),
                   ),
-                ),
-              ],
-            )
-          ],
-        ),
-        body: StreamBuilder<_ProfileDataBundle>(
-          stream: _profileDataStream,
-          builder: (context, bundleSnapshot) {
-            
-            if (bundleSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (bundleSnapshot.hasError || !bundleSnapshot.hasData) {
-              return const Center(child: Text('Erro ao carregar dados do perfil.'));
-            }
-
-            final bundle = bundleSnapshot.data!;
-            final user = bundle.user;
-            final allEvents = bundle.allEvents;
-            final allTeams = bundle.allTeams;
-
-            if (user == null) {
-              return const Center(child: Text('Usuário não encontrado.'));
-            }
-            return FutureBuilder<List<Rating>>(
-              future: _ratingService.getRatingsForUser(user.id),
-              builder: (context, ratingSnapshot) {
-                if (!ratingSnapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final allRatingsReceived = ratingSnapshot.data!;
-                final now = DateTime.now();
-                final myPastEvents = allEvents.where((event) =>
-                    event.dateTime.isBefore(now) &&
-                    (event.organizer.id == user.id || 
-                    event.participants.any((p) => p.id == user.id))
-                ).toList();
-
-                final myCreatedEvents = allEvents.where(
-                    (event) => event.organizer.id == user.id
-                ).toList();
-
-                final myTeams = allTeams.where(
-                    (team) => team.memberIds.contains(user.id)
-                ).toList();
-                
-                final processedAchievements = _calculateAchievements(
-                  user, 
-                  myPastEvents, 
-                  myCreatedEvents, 
-                  myTeams, 
-                  allRatingsReceived
-                );             
-                final unlockedAchievementsCount = processedAchievements.where((a) => a.isUnlocked).length;
-                final pastEventCount = myPastEvents.length;
-                return NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) {
-                    return [
-                      SliverToBoxAdapter(
-                         child: Column(
-                           children: [
-                             _buildProfileHeader(
-                               user, 
-                               pastEventCount,            
-                               unlockedAchievementsCount, 
-                             ), 
-                             const TabBar( 
-                               labelColor: Colors.green,
-                               unselectedLabelColor: Colors.grey,
-                               indicatorColor: Colors.green,
-                               tabs: [
-                                 Tab(icon: Icon(Icons.event, color: Colors.green), text: 'Meus Eventos'),
-                                 Tab(icon: Icon(Icons.history, color: Colors.green), text: 'Histórico'),
-                                 Tab(icon: Icon(Icons.emoji_events, color: Colors.green), text: 'Conquistas'),
-                               ],
-                             ),
-                           ],
-                         ),
-                       ),
-                    ];
-                  },
-                  body: TabBarView(
-                  children: [
-                    _buildMyEventsList(
-                      allEvents: allEvents, 
-                      currentUserId: user.id, 
-                      isUpcoming: true
-                    ),  
-                    _buildMyEventsList(
-                      allEvents: allEvents, 
-                      currentUserId: user.id, 
-                      isUpcoming: false
-                    ), 
-                    _buildAchievementsTab(processedAchievements), 
-                  ],
-                ),
-                );
+                ],
+              )
+            ],
+          ),
+          body: StreamBuilder<_ProfileDataBundle>(
+            stream: _profileDataStream,
+            builder: (context, bundleSnapshot) {
+              
+              if (bundleSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
               }
-            );
-          }
+              if (bundleSnapshot.hasError || !bundleSnapshot.hasData) {
+                return const Center(child: Text('Erro ao carregar dados do perfil.'));
+              }
+
+              final bundle = bundleSnapshot.data!;
+              final user = bundle.user;
+              final allEvents = bundle.allEvents;
+              final allTeams = bundle.allTeams;
+
+              if (user == null) {
+                return const Center(child: Text('Usuário não encontrado.'));
+              }
+              return FutureBuilder<List<Rating>>(
+                future: _ratingService.getRatingsForUser(user.id),
+                builder: (context, ratingSnapshot) {
+                  if (!ratingSnapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final allRatingsReceived = ratingSnapshot.data!;
+                  final now = DateTime.now();
+                  final myPastEvents = allEvents.where((event) =>
+                      event.dateTime.isBefore(now) &&
+                      (event.organizer.id == user.id || 
+                      event.participants.any((p) => p.id == user.id))
+                  ).toList();
+
+                  final myCreatedEvents = allEvents.where(
+                      (event) => event.organizer.id == user.id
+                  ).toList();
+
+                  final myTeams = allTeams.where(
+                      (team) => team.memberIds.contains(user.id)
+                  ).toList();
+                  
+                  final processedAchievements = _calculateAchievements(
+                    user, 
+                    myPastEvents, 
+                    myCreatedEvents, 
+                    myTeams, 
+                    allRatingsReceived
+                  );             
+                  final unlockedAchievementsCount = processedAchievements.where((a) => a.isUnlocked).length;
+                  final pastEventCount = myPastEvents.length;
+                  return NestedScrollView(
+                    headerSliverBuilder: (context, innerBoxIsScrolled) {
+                      return [
+                        SliverToBoxAdapter(
+                          child: Column(
+                            children: [
+                              _buildProfileHeader(
+                                user, 
+                                pastEventCount,            
+                                unlockedAchievementsCount, 
+                              ), 
+                              const TabBar( 
+                                labelColor: Colors.green,
+                                unselectedLabelColor: Colors.grey,
+                                indicatorColor: Colors.green,
+                                tabs: [
+                                  Tab(icon: Icon(Icons.event, color: Colors.green), text: 'Meus Eventos'),
+                                  Tab(icon: Icon(Icons.history, color: Colors.green), text: 'Histórico'),
+                                  Tab(icon: Icon(Icons.emoji_events, color: Colors.green), text: 'Conquistas'),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ];
+                    },
+                    body: TabBarView(
+                    children: [
+                      _buildMyEventsList(allEvents: allEvents, profileUserId: user.id, isUpcoming: true),  
+                      _buildMyEventsList(allEvents: allEvents, profileUserId: user.id, isUpcoming: false),
+                      _buildAchievementsTab(processedAchievements), 
+                    ],
+                  ),
+                  );
+                }
+              );
+            }
+          ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
   Widget _buildProfileHeader(UserModel user, int eventCount, int achievementCount) {
     return Column(
@@ -284,12 +281,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMyEventsList({required List<Event> allEvents, required String currentUserId, required bool isUpcoming}) {
+  Widget _buildMyEventsList({required List<Event> allEvents, required String profileUserId, required bool isUpcoming}) {
 
     final List<Event> myEvents = allEvents
         .where((event) =>
-            event.organizer.id == currentUserId ||
-            event.participants.any((p) => p.id == currentUserId))
+            event.organizer.id == profileUserId || 
+            event.participants.any((p) => p.id == profileUserId)) 
         .toList();
 
     final now = DateTime.now();
@@ -326,10 +323,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final event = filteredEvents[index];
         return _ProfileEventCard(
           event: event, 
-          isPast: !isUpcoming, 
+          isPast: !isUpcoming,
+          showActions: (isUpcoming == false && _isMyProfile), 
           onRatePressed: () {
             _showRatingModal(event);
-          },
+          }               
         );
       },
     );
@@ -540,13 +538,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   class _ProfileEventCard extends StatelessWidget {
     final Event event;
     final bool isPast;
+    final bool showActions;
     final VoidCallback onRatePressed;
 
     const _ProfileEventCard({
-      required this.event,
-      required this.isPast,
-      required this.onRatePressed,
-    });
+    required this.event,
+    required this.isPast,
+    required this.showActions, 
+    required this.onRatePressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +558,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
+            MaterialPageRoute(
+              builder: (context) => EventDetailScreen(
+                event: event,
+                isPastEvent: isPast,
+                ),
+              ),
           );
         },
         child: Padding(
@@ -614,7 +619,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-              if (isPast) ...[
+              if (showActions) ...[
                 const Divider(height: 20),
                 Align(
                   alignment: Alignment.centerRight,
@@ -640,15 +645,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-
                       TextButton.icon(
-                        icon: const Icon(Icons.star_outline, size: 18),
-                        label: const Text('AVALIAR EVENTO'),
-                        onPressed: onRatePressed,
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.orangeAccent,
-                        ),
-                      ),
+                    icon: const Icon(Icons.star_outline, size: 18),
+                    label: const Text('AVALIAR EVENTO'),
+                    onPressed: onRatePressed,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.orangeAccent,
+                    ),
+                  ),
                     ],
                   ),
                 ),

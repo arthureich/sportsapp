@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../api/event_service.dart';
-import '../../models/event_model.dart'; 
+import '../../models/event_model.dart';
+import '../profile/profile_screen.dart'; 
 import 'create_event_screen.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
-  const EventDetailScreen({super.key, required this.event});
+  final bool isPastEvent;
+  const EventDetailScreen({
+    super.key, 
+    required this.event,
+    this.isPastEvent = false, 
+  });
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -142,6 +148,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
      }
   }
 
+  void _navigateToProfile(BuildContext context, String userId) {
+    if (userId == FirebaseAuth.instance.currentUser?.uid) {
+      return; 
+    }
+    Navigator.push(context, MaterialPageRoute(
+      builder: (context) => ProfileScreen(userId: userId),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -222,7 +237,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 20.0),
                     child: Text("Descrição", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(height: 10),
+              _buildParticipantsSection(event),
+              const SizedBox(height: 109),
               Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Text(
@@ -237,10 +253,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             )
           ],
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: _buildBottomButton(event, isFull),
-        ),
+        bottomNavigationBar: (widget.isPastEvent) 
+          ? null 
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: _buildBottomButton(event, isFull),
+            ),
       );
     }
   );
@@ -310,12 +328,15 @@ Widget _buildBottomButton(Event event, bool isFull) {
             itemBuilder: (context, index) {
               final user = event.pendingParticipants[index];
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: NetworkImage(user.avatarUrl.isNotEmpty
-                      ? user.avatarUrl
-                      : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'),
-                ),
-                title: Text(user.name),
+                leading: GestureDetector(
+              onTap: () => _navigateToProfile(context, user.id),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(user.avatarUrl.isNotEmpty
+                    ? user.avatarUrl
+                    : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'),
+              ),
+            ),
+            title: Text(user.name),
                 trailing: _isLoading
                   ? const CircularProgressIndicator()
                   : TextButton(
@@ -376,17 +397,13 @@ Widget _buildBottomButton(Event event, bool isFull) {
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundImage: NetworkImage(organizer.avatarUrl),
+          GestureDetector(
+            onTap: () => _navigateToProfile(context, organizer.id),
+            child: CircleAvatar(
+              backgroundImage: NetworkImage(organizer.avatarUrl),
+            ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Organizado por", style: TextStyle(color: Colors.grey)),
-              Text(organizer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ],
-          )
         ],
       ),
     );
@@ -399,30 +416,33 @@ Widget _buildBottomButton(Event event, bool isFull) {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Quem vai? (${event.participants.length}/${event.maxParticipants})", 
+            "Participantes (${event.participants.length}/${event.maxParticipants})",
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 40, 
+            height: 40,
             child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: event.participants.length,
-              itemBuilder: (context, index) {
-                final user = event.participants[index];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4.0),
+            scrollDirection: Axis.horizontal,
+            itemCount: event.participants.length,
+            itemBuilder: (context, index) {
+              final user = event.participants[index];
+              return Padding(
+                padding: const EdgeInsets.only(right: 4.0),
+                child: GestureDetector(
+                  onTap: () => _navigateToProfile(context, user.id),
                   child: CircleAvatar(
                     backgroundImage: NetworkImage(user.avatarUrl.isNotEmpty
                         ? user.avatarUrl
                         : 'https://avatar.iran.liara.run/public/boy?username=${user.id}'),
-                     onBackgroundImageError: (exception, stackTrace) {},
-                     radius: 18,
+                    onBackgroundImageError: (exception, stackTrace) {},
+                    radius: 18,
                   ),
-                );
-              },
-            ),
-          )
+                ),
+              );
+            },
+          ),
+          ),
         ],
       ),
     );

@@ -126,14 +126,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               final isFull = team.currentMembers >= team.maxMembers;
               final isAdmin = team.adminId == _currentUserId;
 
-              // --- 5. LÓGICA DO BOTÃO ATUALIZADA ---
-              
-              // Se for admin, não mostra o botão (ou poderia mostrar "Gerenciar")
               if (isAdmin) {
                 return const SizedBox.shrink(); 
               }
 
-              // Se for membro, mostra "Sair"
               if (isMember) {
                 return ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -141,8 +137,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   child: _isLoading ? _loadingIndicator() : const Text("SAIR DA EQUIPE"),
                 );
               }
-              
-              // Se já solicitou, mostra "Solicitação Enviada"
+
               if (hasRequested) {
                 return const ElevatedButton(
                   onPressed: null,
@@ -151,7 +146,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 );
               }
 
-              // Se estiver lotada (e ele não for membro/pendente), mostra "Lotada"
               if (isFull) {
                 return const ElevatedButton(
                   onPressed: null,
@@ -160,7 +154,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 );
               }
 
-              // Se for privada e não estiver lotada, mostra "Solicitar Entrada"
               if (!team.isPublic) {
                  return ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
@@ -169,13 +162,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 );
               }
 
-              // Senão (é pública, tem vaga, não é membro), mostra "Entrar"
               return ElevatedButton(
                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                onPressed: _isLoading ? null : () => _toggleMembership(team),
                child: _isLoading ? _loadingIndicator() : const Text("ENTRAR NA EQUIPE"),
              );
-             // --- FIM DA LÓGICA DO BOTÃO ---
            }
          ),
        ),
@@ -193,17 +184,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Se já é membro, ele só pode sair
       if (_isCurrentUserMember) {
         await _teamService.leaveTeam(widget.teamId, _currentUserId);
          if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você saiu da equipe.')));
       } 
-      // Se for pública, ele entra direto
       else if (team.isPublic) {
         await _teamService.joinTeam(widget.teamId, _currentUserId);
          if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você entrou na equipe!')));
       } 
-      // Se for privada, ele solicita
       else {
         await _teamService.requestToJoinTeam(widget.teamId, _currentUserId);
         if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Solicitação enviada!')));
@@ -229,7 +217,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
-  // Constrói a lista de membros pendentes (só para o admin)
   Widget _buildPendingMembersSection(List<String> pendingMemberIds) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
