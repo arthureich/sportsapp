@@ -58,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _isMyProfile = (_profileUserId == _currentUserId);
     if (_profileUserId != null) {
       _profileDataStream = ZipStream.zip3(
-        _userService.getUserStream(_profileUserId!), 
+        _userService.getUserStream(_profileUserId), 
         _eventService.getAllEvents(),
         _teamService.getTeams(),
         (UserModel? user, List<Event> events, List<Team> teams) => 

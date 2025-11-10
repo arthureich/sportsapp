@@ -39,6 +39,9 @@ class _HomeContentState extends State<HomeContent> {
   BitmapDescriptor _activeLocationIcon = BitmapDescriptor.defaultMarker;
   // ignore: unused_field
   bool _areIconsLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  List<PredefinedLocation> _searchResults = [];
+  bool _isSearchFocused = false;
 
   @override
   void initState() {
@@ -50,6 +53,53 @@ class _HomeContentState extends State<HomeContent> {
     _loadMarkerIcons().then((_) {
       _fetchLocationAndLoadEvents();
     });
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    if (_searchController.text.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+        });
+      }
+      return;
+    }
+
+  final query = _searchController.text.toLowerCase();
+    final results = predefinedLocationsCascavel.where((loc) {
+      return loc.name.toLowerCase().contains(query) ||
+             loc.description.toLowerCase().contains(query);
+    }).toList();
+
+    if (mounted) {
+      setState(() {
+        _searchResults = results;
+      });
+    }
+  }
+
+  void _navigateToLocation(PredefinedLocation location) {
+    _searchController.clear();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _searchResults = [];
+      _isSearchFocused = false;
+    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PredefinedLocationDetailScreen(location: location),
+      ),
+    );
   }
 
   Future<BitmapDescriptor> _getResizedAssetIcon(String path, int width) async {
@@ -64,7 +114,7 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Future<void> _loadMarkerIcons() async {
-    const int markerWidth = 35; 
+    const int markerWidth = 40; 
 
     final iconsToLoad = {
       'futebol': 'assets/markers/futebol.png',
@@ -153,11 +203,58 @@ class _HomeContentState extends State<HomeContent> {
 
   @override
   Widget build(BuildContext context) {
+  final panelMinHeight = MediaQuery.of(context).size.height * 0.10;
   return Stack(
       children: [
         _buildMap(),
         _buildSlidingPanel(),
         _buildTopFilterBars(),
+        if (_isSearchFocused && _searchResults.isNotEmpty)
+            Positioned(
+              top: 110, 
+              left: 16,
+              right: 16,
+              child: Material(
+                elevation: 4.0,
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.3, 
+                  ),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final location = _searchResults[index];
+                      return ListTile(
+                        title: Text(location.name),
+                        subtitle: Text(
+                          location.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        leading: const Icon(Icons.location_pin, color: Colors.orangeAccent),
+                        onTap: () => _navigateToLocation(location),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+        Positioned(
+            bottom: panelMinHeight + 5,
+            right: 20,
+            child: FloatingActionButton(
+              mini: true, 
+              onPressed: _animateToCurrentLocation,
+              backgroundColor: Colors.white,
+              foregroundColor: Theme.of(context).primaryColor, 
+              heroTag: 'myLocationBtn',
+              child: const Icon(Icons.my_location),
+            ),
+          ),
         
         if (_isLoadingLocation)
           Container(
@@ -199,6 +296,31 @@ class _HomeContentState extends State<HomeContent> {
                ),
              ),
            ),
+        Positioned(
+          bottom: panelMinHeight + 5, 
+          left: 20,
+          child: Column(
+            children: [
+              FloatingActionButton(
+                mini: true,
+                onPressed: _zoomIn,
+                backgroundColor: Colors.white,
+                foregroundColor: Theme.of(context).primaryColor,
+                heroTag: 'zoomInBtn',
+                child: const Icon(Icons.add),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton(
+                mini: true,
+                onPressed: _zoomOut,
+                backgroundColor: Colors.white,
+                foregroundColor: Theme.of(context).primaryColor,
+                heroTag: 'zoomOutBtn',
+                child: const Icon(Icons.remove),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -213,6 +335,9 @@ class _HomeContentState extends State<HomeContent> {
           initialCameraPosition: const CameraPosition(target: _initialPosition, zoom: 13),
           onMapCreated: (controller) => _mapController = controller,
           markers: markers.values.toSet(),
+          myLocationEnabled: true,
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
       );
     }
     return StreamBuilder<List<Event>>(
@@ -255,7 +380,7 @@ class _HomeContentState extends State<HomeContent> {
           onMapCreated: (controller) => _mapController = controller,
           markers: markers.values.toSet(), 
           myLocationEnabled: true,
-          myLocationButtonEnabled: true,
+          myLocationButtonEnabled: false,
         );
       },
     );
@@ -327,8 +452,8 @@ class _HomeContentState extends State<HomeContent> {
 
   Widget _buildSlidingPanel() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.25,
-      minChildSize: 0.25,
+      initialChildSize: 0.12,
+      minChildSize: 0.12,
       maxChildSize: 0.75,
       builder: (context, scrollController) {
         return ClipRRect(
@@ -340,7 +465,7 @@ class _HomeContentState extends State<HomeContent> {
             filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8), 
+                color: const Color.fromARGB(255, 220, 250, 224).withValues(alpha: 1), 
               ),
               child: StreamBuilder<List<Event>>(
                 stream: _eventsStream, 
@@ -406,21 +531,21 @@ class _HomeContentState extends State<HomeContent> {
   Widget _buildPanelHeader(int count, String message) {
     return Column(
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Container(
           width: 40,
           height: 5,
           decoration: BoxDecoration(
-            color: Colors.grey[400],
+            color: const Color.fromARGB(255, 150, 149, 149),
             borderRadius: const BorderRadius.all(Radius.circular(12)),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
           message,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
       ],
     );
   }
@@ -449,15 +574,35 @@ class _HomeContentState extends State<HomeContent> {
                 ),
               ],
             ),
-             child: const TextField(
+             child: TextField(
+              controller: _searchController,
+                onTap: () {
+                  setState(() {
+                    _isSearchFocused = true;
+                  });
+              },
               decoration: InputDecoration(
-                hintText: 'Buscar endereço...',
-                icon: Icon(Icons.search, color: Colors.grey),
-                border: InputBorder.none,
+                  hintText: "Buscar locais...",
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          onPressed: () {
+                            _searchController.clear();
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(width: 8),
           Row(
             children: [
               Expanded(
@@ -650,6 +795,7 @@ class _HomeContentState extends State<HomeContent> {
       ),
     );
   }
+
   void _applyFilters(BuildContext modalContext) {
     if (_currentPosition != null) {
       setState(() {
@@ -704,6 +850,34 @@ class _HomeContentState extends State<HomeContent> {
     );
 
     Navigator.pop(modalContext); 
+  }
+
+  void _animateToCurrentLocation() {
+    if (_mapController != null && _currentPosition != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            zoom: 14.5, 
+          ),
+        ),
+      );
+    } else {
+      _fetchLocationAndLoadEvents();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Buscando sua localização... Tente novamente em um segundo.')),
+        );
+      }
+    }
+  }
+
+  void _zoomIn() {
+    _mapController?.animateCamera(CameraUpdate.zoomIn());
+  }
+
+  void _zoomOut() {
+    _mapController?.animateCamera(CameraUpdate.zoomOut());
   }
 
   Widget _buildSportFilterChip(String sport) {
