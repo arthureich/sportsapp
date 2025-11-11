@@ -19,10 +19,24 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  String _selectedSport = 'Todos';
+  List<String> _selectedSports = []; 
+  final List<String> _allSports = const [
+    'Futebol', 
+    'Basquete', 
+    'Vôlei', 
+    'Tênis', 
+    'Corrida', 
+    'Ciclismo',
+    'Natação', 
+    'Beach Tennis', 
+    'Futevôlei', 
+    'Handebol', 
+    'Padel', 
+    'Skate', 
+    'Outro' 
+  ];
   final EventService _eventService = EventService(); 
   static const LatLng _initialPosition = LatLng(-24.9555, -53.4552);
-
   Position? _currentPosition; 
   Stream<List<Event>>? _eventsStream;
   bool _isLoadingLocation = true;
@@ -74,7 +88,7 @@ class _HomeContentState extends State<HomeContent> {
       return;
     }
 
-  final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.toLowerCase();
     final results = predefinedLocationsCascavel.where((loc) {
       return loc.name.toLowerCase().contains(query) ||
              loc.description.toLowerCase().contains(query);
@@ -203,8 +217,8 @@ class _HomeContentState extends State<HomeContent> {
 
   @override
   Widget build(BuildContext context) {
-  final panelMinHeight = MediaQuery.of(context).size.height * 0.10;
-  return Stack(
+    final panelMinHeight = MediaQuery.of(context).size.height * 0.10;
+    return Stack(
       children: [
         _buildMap(),
         _buildSlidingPanel(),
@@ -343,30 +357,44 @@ class _HomeContentState extends State<HomeContent> {
     return StreamBuilder<List<Event>>(
       stream: _eventsStream,
       builder: (context, snapshot) {
-        if (_selectedSport == 'Todos') {
-          for (var loc in predefinedLocationsCascavel) {
-             markers[loc.name] = _createEmptyLocationMarker(loc);
-          }
+        final hasActiveFilters = _selectedSports.isNotEmpty || 
+                               _filterDate != null || 
+                               _filterTime != null || 
+                               _filterHasVacancies;
+      
+      if (!hasActiveFilters) {
+        for (var loc in predefinedLocationsCascavel) {
+          markers[loc.name] = _createEmptyLocationMarker(loc);
         }
-
+      }
+        Set<String> processedLocations = {};
         if (snapshot.hasData) {
-          final allEvents = snapshot.data!;         
-          final filteredEvents = (_selectedSport == 'Todos')
-              ? allEvents 
-              : allEvents
-                  .where((event) => event.sport == _selectedSport)
-                  .toList();
-          
+          final filteredEvents = snapshot.data!;     
           for (final event in filteredEvents) {    
            final eventPosKey = '${event.location.coordinates.latitude.toStringAsFixed(5)},${event.location.coordinates.longitude.toStringAsFixed(5)}';
             if (_predefinedLocationLookup.containsKey(eventPosKey)) {
               final loc = _predefinedLocationLookup[eventPosKey]!;
-              markers[loc.name] = _createActiveLocationMarker(loc, allEvents);
-              
+              processedLocations.add(loc.name);
+              if (!markers.containsKey(loc.name)) {
+                markers[loc.name] = _createActiveLocationMarker(loc, filteredEvents);
+              }
             } else {
+              if (_selectedSports.isEmpty || _selectedSports.contains(event.sport)) {
               final icon = _getIconForEvent(event);
               markers[event.id] = _createSportEventMarker(event, icon);
             }
+          }
+        }
+        if (!hasActiveFilters) {
+          for (var loc in predefinedLocationsCascavel) {
+            if (!processedLocations.contains(loc.name)) {
+              markers[loc.name] = _createEmptyLocationMarker(loc);
+            }
+          }
+        }
+        } else if (!hasActiveFilters) {
+          for (var loc in predefinedLocationsCascavel) {
+            markers[loc.name] = _createEmptyLocationMarker(loc);
           }
         }
 
@@ -488,17 +516,12 @@ class _HomeContentState extends State<HomeContent> {
                   if (snapshot.hasError) {
                     return _buildPanelHeader(0, "Erro ao carregar eventos.");
                   }
-                  final allEvents = snapshot.data ?? [];
-                  final events = (_selectedSport == 'Todos')
-                      ? allEvents
-                      : allEvents
-                          .where((event) => event.sport == _selectedSport)
-                          .toList();
+                  final events = snapshot.data ?? [];
                   
                   if (events.isEmpty) {
-                    final message = _selectedSport == 'Todos'
+                    final message = _selectedSports.isEmpty
                         ? "Nenhum evento encontrado por perto."
-                        : "Nenhum evento de '$_selectedSport' encontrado.";
+                        : "Nenhum evento para os esportes selecionados.";
                     return ListView(
                       controller: scrollController,
                       children: [
@@ -551,10 +574,6 @@ class _HomeContentState extends State<HomeContent> {
   }
   
   Widget _buildTopFilterBars() {
-    final List<String> filterSports = [
-      'Todos', 'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 
-      'Futevôlei', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei'
-    ];
     return Positioned(
       top: MediaQuery.of(context).padding.top + 10,
       left: 16,
@@ -602,176 +621,12 @@ class _HomeContentState extends State<HomeContent> {
                 ),
               ),
             ),
-          const SizedBox(width: 8),
+          const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: filterSports 
-                        .map((sport) => _buildSportFilterChip(sport))
-                        .toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
+              const Spacer(),
               InkWell(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (modalContext) => Container(
-                      height: MediaQuery.of(context).size.height * 0.7,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      child: StatefulBuilder(
-                        builder: (BuildContext context, StateSetter setModalState) {
-                          return Column(
-                            children: [
-                              Container(
-                                margin: const EdgeInsets.symmetric(vertical: 10),
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: [
-                                    const Text(
-                                      'Filtros Avançados',
-                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                                    ),
-                                    const Spacer(),
-                                    IconButton(
-                                      icon: const Icon(Icons.close),
-                                      onPressed: () => Navigator.pop(modalContext),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              Expanded(
-                                child: ListView(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  children: [
-                                    const Text('Data e Hora', style: TextStyle(fontWeight: FontWeight.w500)),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton.icon(
-                                            icon: const Icon(Icons.calendar_today),
-                                            label: Text(_filterDate == null 
-                                              ? 'Selecionar Data'
-                                              : '${_filterDate!.day}/${_filterDate!.month}/${_filterDate!.year}'),
-                                            onPressed: () async {
-                                              final date = await showDatePicker(
-                                                context: context,
-                                                initialDate: _filterDate ?? DateTime.now(),
-                                                firstDate: DateTime.now(),
-                                                lastDate: DateTime.now().add(const Duration(days: 365)),
-                                              );
-                                              if (date != null) {
-                                                setModalState(() => _filterDate = date);
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: OutlinedButton.icon(
-                                            icon: const Icon(Icons.access_time),
-                                            label: Text(_filterTime == null 
-                                              ? 'Selecionar Hora'
-                                              : '${_filterTime!.hour}:${_filterTime!.minute.toString().padLeft(2, '0')}'),
-                                            onPressed: () async {
-                                              final time = await showTimePicker(
-                                                context: context,
-                                                initialTime: _filterTime ?? TimeOfDay.now(),
-                                              );
-                                              if (time != null) {
-                                                setModalState(() => _filterTime = time);
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 24),
-                                    
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text('Distância máxima', style: TextStyle(fontWeight: FontWeight.w500)),
-                                        Text('${_filterDistance.round()} km', style: TextStyle(color: Colors.grey[600])),
-                                      ],
-                                    ),
-                                    Slider(
-                                      value: _filterDistance,
-                                      min: 1,
-                                      max: 50,
-                                      divisions: 49,
-                                      label: '${_filterDistance.round()} km',
-                                      onChanged: (value) => setModalState(() => _filterDistance = value),
-                                    ),
-                                    const SizedBox(height: 24),
-
-                                    SwitchListTile(
-                                      title: const Text('Apenas com vagas disponíveis', 
-                                        style: TextStyle(fontWeight: FontWeight.w500)),
-                                      value: _filterHasVacancies,
-                                      onChanged: (value) => setModalState(() => _filterHasVacancies = value),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          setModalState(() { 
-                                            _filterDate = null;
-                                            _filterTime = null;
-                                            _filterDistance = 20.0;
-                                            _filterHasVacancies = false;
-                                          });
-                                          _applyFilters(modalContext); 
-                                        },
-                                        child: const Text('Limpar Filtros'),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: FilledButton(
-                                        onPressed: () {
-                                          _applyFilters(modalContext);
-                                        },
-                                        child: const Text('Aplicar'),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        } 
-                      ),
-                    ),
-                  );
-                },
+                onTap: () => _showFilterBottomSheet(),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   height: 40,
@@ -780,12 +635,31 @@ class _HomeContentState extends State<HomeContent> {
                     color: Colors.white.withValues(alpha: 0.8), 
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SvgPicture.asset(
-                      'assets/icons/filter.svg',
-                      colorFilter: ColorFilter.mode(Colors.grey[800]!, BlendMode.srcIn),
-                    ),
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: SvgPicture.asset(
+                            'assets/icons/filter.svg',
+                            colorFilter: ColorFilter.mode(Colors.grey[800]!, BlendMode.srcIn),
+                          ),
+                        ),
+                      ),
+                      if (_selectedSports.isNotEmpty || _filterDate != null || _filterTime != null || _filterHasVacancies)
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -796,12 +670,274 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
+  void _showFilterBottomSheet() {
+    // Criar cópias locais temporárias para o modal
+    List<String> tempSelectedSports = List.from(_selectedSports);
+    DateTime? tempFilterDate = _filterDate;
+    TimeOfDay? tempFilterTime = _filterTime;
+    double tempFilterDistance = _filterDistance;
+    bool tempFilterHasVacancies = _filterHasVacancies;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        return PopScope(
+          canPop: true,
+          onPopInvoked: (bool didPop) {
+            // Quando cancela, não faz nada (mantém os filtros aplicados)
+          },
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: StatefulBuilder(
+              builder: (BuildContext context, StateSetter setModalState) {
+                return Column(
+                  children: [
+                    // Handle bar
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Text(
+                        'Filtrar Eventos',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const Divider(),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        children: [
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Esportes',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8.0,
+                            runSpacing: 8.0,
+                            children: _allSports.map((sport) {
+                              final isSelected = tempSelectedSports.contains(sport);
+                              return FilterChip(
+                                label: Text(sport),
+                                selectedColor: const Color(0xFFC8E6C9), 
+                                selected: isSelected,
+                                labelStyle: TextStyle(
+                                  color: isSelected ? Colors.green[800] : Colors.black87,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                                checkmarkColor: Colors.green[800],
+                                onSelected: (selected) {
+                                  setModalState(() {
+                                    if (selected) {
+                                      tempSelectedSports.add(sport);
+                                    } else {
+                                      tempSelectedSports.remove(sport);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Data e Hora',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.calendar_today, size: 20),
+                                  label: Text(
+                                    tempFilterDate == null
+                                        ? 'Selecionar Data'
+                                        : '${tempFilterDate?.day}/${tempFilterDate?.month}/${tempFilterDate?.year}',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  onPressed: () async {
+                                    final date = await showDatePicker(
+                                      context: context,
+                                      initialDate: tempFilterDate ?? DateTime.now(),
+                                      firstDate: DateTime.now(),
+                                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                                    );
+                                    if (date != null) {
+                                      setModalState(() => tempFilterDate = date);
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.access_time, size: 20),
+                                  label: Text(
+                                    tempFilterTime == null
+                                        ? 'Selecionar Hora'
+                                        : '${tempFilterTime?.hour}:${tempFilterTime?.minute.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  onPressed: () async {
+                                    final time = await showTimePicker(
+                                      context: context,
+                                      initialTime: tempFilterTime ?? TimeOfDay.now(),
+                                    );
+                                    if (time != null) {
+                                      setModalState(() => tempFilterTime = time);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Distância máxima',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(
+                                '${_filterDistance.round()} km',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Slider(
+                            value: tempFilterDistance,
+                            min: 1,
+                            max: 50,
+                            divisions: 49,
+                            label: '${tempFilterDistance.round()} km',
+                            activeColor: Colors.green,
+                            onChanged: (value) => setModalState(() => tempFilterDistance = value),
+                          ),
+                          const SizedBox(height: 16),
+                          SwitchListTile(
+                            title: const Text(
+                              'Apenas com vagas disponíveis',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            activeColor: Colors.green,
+                            value: tempFilterHasVacancies,
+                            onChanged: (value) => setModalState(() => tempFilterHasVacancies = value),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  setModalState(() {
+                                    tempSelectedSports.clear();
+                                    tempFilterDate = null;
+                                    tempFilterTime = null;
+                                    tempFilterDistance = 20.0;
+                                    tempFilterHasVacancies = false;
+                                  });
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                child: const Text('Limpar Filtros'),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () {
+                                  // Aplicar os filtros temporários aos filtros principais
+                                  setState(() {
+                                    _selectedSports = List.from(tempSelectedSports);
+                                    _filterDate = tempFilterDate;
+                                    _filterTime = tempFilterTime;
+                                    _filterDistance = tempFilterDistance;
+                                    _filterHasVacancies = tempFilterHasVacancies;
+                                  });
+                                  _applyFilters(modalContext);
+                                },
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  backgroundColor: Colors.green,
+                                ),
+                                child: const Text('Aplicar'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _applyFilters(BuildContext modalContext) {
     if (_currentPosition != null) {
       setState(() {
         _eventsStream = _eventService
             .getNearbyEvents(_currentPosition!, _filterDistance)
             .map((events) => events.where((event) {
+                  if (_selectedSports.isNotEmpty && !_selectedSports.contains(event.sport)) {
+                    return false;
+                  }
                   if (_filterDate != null) {
                     final eventDate = event.dateTime;
                     if (eventDate.year != _filterDate!.year ||
@@ -831,6 +967,9 @@ class _HomeContentState extends State<HomeContent> {
 
     String filterMessage = 'Filtros aplicados: ';
     List<String> activeFilters = [];
+    if (_selectedSports.isNotEmpty) {
+      activeFilters.add('Esportes (${_selectedSports.length})');
+    }
     if (_filterDate != null) {
       activeFilters.add('Data: ${_filterDate!.day}/${_filterDate!.month}');
     }
@@ -846,10 +985,11 @@ class _HomeContentState extends State<HomeContent> {
       SnackBar(
         content: Text(activeFilters.isEmpty ? 'Filtros limpos!' : filterMessage + activeFilters.join(', ')),
         duration: const Duration(seconds: 3),
+        backgroundColor: Colors.green[700],
       ),
     );
 
-    Navigator.pop(modalContext); 
+    Navigator.pop(modalContext);
   }
 
   void _animateToCurrentLocation() {
@@ -858,7 +998,7 @@ class _HomeContentState extends State<HomeContent> {
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-            zoom: 14.5, 
+            zoom: 14.5,
           ),
         ),
       );
@@ -880,34 +1020,6 @@ class _HomeContentState extends State<HomeContent> {
     _mapController?.animateCamera(CameraUpdate.zoomOut());
   }
 
-  Widget _buildSportFilterChip(String sport) {
-    final bool isSelected = _selectedSport == sport;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: ChoiceChip(
-        label: Text(sport),
-        selected: isSelected,
-        onSelected: (selected) {
-          setState(() {
-            _selectedSport = sport;
-          });
-        },
-        backgroundColor: Colors.white.withValues(alpha: 0.8), 
-        selectedColor: const Color(0xFFC8E6C9),
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.green[800] : Colors.black,
-          fontWeight: FontWeight.bold,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: isSelected ? Colors.green : Colors.transparent,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildEventListItem(Event event) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -917,7 +1029,7 @@ class _HomeContentState extends State<HomeContent> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05), 
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 5,
           )
         ],
@@ -926,7 +1038,7 @@ class _HomeContentState extends State<HomeContent> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)), 
+            MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
           );
         },
         borderRadius: BorderRadius.circular(16),
@@ -972,6 +1084,7 @@ class _HomeContentState extends State<HomeContent> {
       ),
     );
   }
+
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -992,7 +1105,7 @@ class _HomeContentState extends State<HomeContent> {
     if (permission == LocationPermission.deniedForever) {
       throw Exception(
           'Permissão de localização negada permanentemente. Não é possível requisitar permissões.');
-    } 
+    }
 
     return await Geolocator.getCurrentPosition();
   }
