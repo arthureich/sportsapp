@@ -128,7 +128,9 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Future<void> _loadMarkerIcons() async {
-    const int markerWidth = 40; 
+    const int logicalWidth = 20;
+    final double pixelRatio = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    final int physicalWidth = (logicalWidth * pixelRatio).round();
 
     final iconsToLoad = {
       'futebol': 'assets/markers/futebol.png',
@@ -148,7 +150,7 @@ class _HomeContentState extends State<HomeContent> {
 
     for (var entry in iconsToLoad.entries) {
       try {
-        _sportIcons[entry.key] = await _getResizedAssetIcon(entry.value, markerWidth);
+        _sportIcons[entry.key] = await _getResizedAssetIcon(entry.value, physicalWidth);
       } catch (e) {
         debugPrint("Erro ao carregar ícone ${entry.value}: $e. Usando padrão.");
         _sportIcons[entry.key] = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
@@ -156,8 +158,8 @@ class _HomeContentState extends State<HomeContent> {
     }
     
     try {
-      _emptyLocationIcon = await _getResizedAssetIcon('assets/markers/EventlessArena.png', markerWidth);
-      _activeLocationIcon = await _getResizedAssetIcon('assets/markers/EventArena.png', markerWidth); 
+      _emptyLocationIcon = await _getResizedAssetIcon('assets/markers/EventlessArena.png', physicalWidth);
+      _activeLocationIcon = await _getResizedAssetIcon('assets/markers/EventArena.png', physicalWidth);
     } catch (e) {
       _emptyLocationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
       _activeLocationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
