@@ -495,7 +495,7 @@ class _HomeContentState extends State<HomeContent> {
             filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 220, 250, 224).withValues(alpha: 1), 
+                color: const Color.fromARGB(255, 111, 243, 129).withValues(alpha: 1), 
               ),
               child: StreamBuilder<List<Event>>(
                 stream: _eventsStream, 
@@ -555,22 +555,24 @@ class _HomeContentState extends State<HomeContent> {
 
   Widget _buildPanelHeader(int count, String message) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 8),
         Container(
-          width: 40,
-          height: 5,
+          margin: const EdgeInsets.only(top: 4, bottom: 6),
+          width: 36,
+          height: 6,
           decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 150, 149, 149),
-            borderRadius: const BorderRadius.all(Radius.circular(12)),
+            color: Colors.white.withValues(alpha: 1),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6.0),
+          child: Text(
+            message,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
         ),
-        const SizedBox(height: 4),
       ],
     );
   }
@@ -634,7 +636,7 @@ class _HomeContentState extends State<HomeContent> {
                   height: 40,
                   width: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.8), 
+                    color: const Color.fromARGB(255, 133, 250, 109).withValues(alpha: 0.8), 
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Stack(
@@ -673,7 +675,6 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   void _showFilterBottomSheet() {
-    // Criar cópias locais temporárias para o modal
     List<String> tempSelectedSports = List.from(_selectedSports);
     DateTime? tempFilterDate = _filterDate;
     TimeOfDay? tempFilterTime = _filterTime;
@@ -688,7 +689,6 @@ class _HomeContentState extends State<HomeContent> {
         return PopScope(
           canPop: true,
           onPopInvoked: (bool didPop) {
-            // Quando cancela, não faz nada (mantém os filtros aplicados)
           },
           child: Container(
             height: MediaQuery.of(context).size.height * 0.75,
@@ -700,7 +700,6 @@ class _HomeContentState extends State<HomeContent> {
               builder: (BuildContext context, StateSetter setModalState) {
                 return Column(
                   children: [
-                    // Handle bar
                     Padding(
                       padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
                       child: Container(
