@@ -276,6 +276,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
             StatItem(count: user.scoreEsportividade.toStringAsFixed(1), label: 'Avaliação'),
           ],
         ),
+        if (!_isMyProfile)
+          Padding(
+            padding: const EdgeInsets.only(top: 10.0), 
+            child: TextButton.icon(
+              icon: const Icon(Icons.report_problem_outlined, size: 18),
+              label: const Text('REPORTAR ESTE USUÁRIO'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportScreen(
+                      prefilledUserId: user.id,
+                      prefilledUserName: user.nome,
+                    ),
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red[700],
+              ),
+            ),
+          ),
+
         const SizedBox(height: 20),
       ],
     );

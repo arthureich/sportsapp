@@ -4,11 +4,15 @@ import '../../api/report_service.dart';
 class ReportScreen extends StatefulWidget {
   final String? prefilledEventId;
   final String? prefilledEventName;
+  final String? prefilledUserId;
+  final String? prefilledUserName;
 
   const ReportScreen({
     super.key,
     this.prefilledEventId,
     this.prefilledEventName,
+    this.prefilledUserId,
+    this.prefilledUserName,
   });
 
   @override
@@ -36,6 +40,13 @@ class _ReportScreenState extends State<ReportScreen> {
         _isItemReadOnly = true; 
       });
     }
+    else if (widget.prefilledUserId != null) {
+      setState(() {
+        _reportType = 'Reportar Usuário';
+        _reportedItemController.text = widget.prefilledUserName ?? widget.prefilledUserId!;
+        _isItemReadOnly = true;
+      });
+    }
   }
 
   @override
@@ -54,10 +65,13 @@ class _ReportScreenState extends State<ReportScreen> {
       await _reportService.submitReport(
         type: _reportType,
         description: _descriptionController.text,
-        reportedUserId: _reportType == 'Reportar Usuário' ? _reportedItemController.text : null,
+        reportedUserId: _reportType == 'Reportar Usuário' 
+          ? (widget.prefilledUserId ?? _reportedItemController.text) 
+          : null,
         reportedLocationName: _reportType == 'Reportar Local' ? _reportedItemController.text : null,
-        reportedEventId: _reportType == 'Reportar Evento' ? (widget.prefilledEventId 
-        ?? _reportedItemController.text) : null,
+        reportedEventId: _reportType == 'Reportar Evento' 
+          ? (widget.prefilledEventId ?? _reportedItemController.text) 
+          : null,
       );
       
       if (mounted) {
@@ -88,14 +102,16 @@ class _ReportScreenState extends State<ReportScreen> {
     String itemHint = '';
 
     if (_reportType == 'Reportar Usuário') {
-      itemLabel = 'ID do Usuário';
+      itemLabel = 'Usuário';
       itemHint = 'Cole o ID do perfil do usuário';
+      if(widget.prefilledUserName != null) itemLabel = 'Usuário Reportado';
     } else if (_reportType == 'Reportar Local') {
       itemLabel = 'Nome do Local';
       itemHint = 'Nome do local pré-definido';
     } else if (_reportType == 'Reportar Evento') {
       itemLabel = 'Evento';
       itemHint = 'Nome ou ID do Evento';
+      if(widget.prefilledEventName != null) itemLabel = 'Evento Reportado';
     }
     return Scaffold(
       appBar: AppBar(

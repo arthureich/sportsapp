@@ -482,8 +482,8 @@ class _HomeContentState extends State<HomeContent> {
 
   Widget _buildSlidingPanel() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.12,
-      minChildSize: 0.12,
+      initialChildSize: 0.105,
+      minChildSize: 0.105,
       maxChildSize: 0.75,
       builder: (context, scrollController) {
         return ClipRRect(
@@ -495,7 +495,7 @@ class _HomeContentState extends State<HomeContent> {
             filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 111, 243, 129).withValues(alpha: 1), 
+                color: const Color(0xFF4CAF50).withValues(alpha: 1), 
               ),
               child: StreamBuilder<List<Event>>(
                 stream: _eventsStream, 
@@ -636,7 +636,7 @@ class _HomeContentState extends State<HomeContent> {
                   height: 40,
                   width: 40,
                   decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 133, 250, 109).withValues(alpha: 0.8), 
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.8), 
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Stack(
@@ -688,6 +688,7 @@ class _HomeContentState extends State<HomeContent> {
       builder: (modalContext) {
         return PopScope(
           canPop: true,
+          // ignore: deprecated_member_use
           onPopInvoked: (bool didPop) {
           },
           child: Container(
@@ -899,7 +900,6 @@ class _HomeContentState extends State<HomeContent> {
                             Expanded(
                               child: FilledButton(
                                 onPressed: () {
-                                  // Aplicar os filtros temporários aos filtros principais
                                   setState(() {
                                     _selectedSports = List.from(tempSelectedSports);
                                     _filterDate = tempFilterDate;
