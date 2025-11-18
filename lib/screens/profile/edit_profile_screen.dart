@@ -26,7 +26,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _pickedImage;
   final List<String> _selectedSports = [];
   final List<String> _availableSports = const [
-  'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 
+  'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 'Futsal',
   'Futevôlei', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei', 'Outro'
 ];
 

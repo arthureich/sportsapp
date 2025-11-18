@@ -24,7 +24,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
   double _maxMembers = 10.0;
 
   final List<String> _sports = const [
-  'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 
+  'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 'Futsal',
   'Futevôlei', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei', 'Outro'
 ];
   final TeamService _teamService = TeamService();

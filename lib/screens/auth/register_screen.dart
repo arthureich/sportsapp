@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final List<String> _genders = ['Masculino', 'Feminino'];
   final List<String> _availableSports = const [
   'Basquete', 'Beach Tennis', 'Ciclismo', 'Corrida', 'Futebol', 
-  'Futevôlei', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei', 'Outro'
+  'Futevôlei', 'Futsal', 'Handebol', 'Natação', 'Padel', 'Skate', 'Tênis', 'Vôlei', 'Outro'
 ];
   final AuthService _authService = AuthService();
 

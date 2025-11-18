@@ -273,7 +273,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             StatItem(count: eventCount.toString(), label: 'Eventos'), 
             StatItem(count: achievementCount.toString(), label: 'Conquistas'), 
-            StatItem(count: user.scoreEsportividade.toStringAsFixed(1), label: 'Avaliação'),
+            StatItem(
+              count: user.scoreEsportividade != null 
+                  ? user.scoreEsportividade!.toStringAsFixed(1) 
+                  : '-', 
+              label: 'Avaliação'
+            ),
           ],
         ),
         if (!_isMyProfile)
@@ -463,7 +468,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       bool unlocked = false;
       switch (ach.title) {
         case "Bom Espírito":
-          unlocked = user.scoreEsportividade >= 4.5;
+          unlocked = (user.scoreEsportividade ?? 0) >= 4.5;
           break;
         case "Popular":
           unlocked = allRatingsReceived.length >= 10;

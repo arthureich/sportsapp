@@ -26,6 +26,7 @@ class _HomeContentState extends State<HomeContent> {
     'Vôlei', 
     'Tênis', 
     'Corrida', 
+    'Futsal',
     'Ciclismo',
     'Natação', 
     'Beach Tennis', 
@@ -138,6 +139,7 @@ class _HomeContentState extends State<HomeContent> {
       'vôlei': 'assets/markers/volei.png',
       'tênis': 'assets/markers/tenis.png',
       'corrida': 'assets/markers/corrida.png',
+      'futsal': 'assets/markers/futebol.png',
       'ciclismo': 'assets/markers/ciclismo.png',
       'beach tennis': 'assets/markers/beach_tennis.png',
       'futevôlei': 'assets/markers/futevolei.png',
@@ -359,47 +361,42 @@ class _HomeContentState extends State<HomeContent> {
     return StreamBuilder<List<Event>>(
       stream: _eventsStream,
       builder: (context, snapshot) {
-        final hasActiveFilters = _selectedSports.isNotEmpty || 
-                               _filterDate != null || 
-                               _filterTime != null || 
-                               _filterHasVacancies;
-      
-      if (!hasActiveFilters) {
-        for (var loc in predefinedLocationsCascavel) {
-          markers[loc.name] = _createEmptyLocationMarker(loc);
-        }
-      }
-        Set<String> processedLocations = {};
+        markers.clear();
+        final bool isSportFilterActive = _selectedSports.isNotEmpty;
         if (snapshot.hasData) {
-          final filteredEvents = snapshot.data!;     
-          for (final event in filteredEvents) {    
-           final eventPosKey = '${event.location.coordinates.latitude.toStringAsFixed(5)},${event.location.coordinates.longitude.toStringAsFixed(5)}';
-            if (_predefinedLocationLookup.containsKey(eventPosKey)) {
-              final loc = _predefinedLocationLookup[eventPosKey]!;
-              processedLocations.add(loc.name);
-              if (!markers.containsKey(loc.name)) {
-                markers[loc.name] = _createActiveLocationMarker(loc, filteredEvents);
-              }
-            } else {
-              if (_selectedSports.isEmpty || _selectedSports.contains(event.sport)) {
+          final filteredEvents = snapshot.data!; 
+          final Map<String, int> activeLocationEventCount = {};
+        for (final event in filteredEvents) { 
+            final eventPosKey = '${event.location.coordinates.latitude.toStringAsFixed(5)},${event.location.coordinates.longitude.toStringAsFixed(5)}';
+            if (isSportFilterActive) {
               final icon = _getIconForEvent(event);
               markers[event.id] = _createSportEventMarker(event, icon);
-            }
-          }
-        }
-        if (!hasActiveFilters) {
-          for (var loc in predefinedLocationsCascavel) {
-            if (!processedLocations.contains(loc.name)) {
-              markers[loc.name] = _createEmptyLocationMarker(loc);
-            }
-          }
-        }
-        } else if (!hasActiveFilters) {
-          for (var loc in predefinedLocationsCascavel) {
-            markers[loc.name] = _createEmptyLocationMarker(loc);
-          }
-        }
 
+            } else {
+              if (_predefinedLocationLookup.containsKey(eventPosKey)) {
+                final loc = _predefinedLocationLookup[eventPosKey]!;
+                activeLocationEventCount.update(loc.name, (val) => val + 1, ifAbsent: () => 1);
+              } else {
+                final icon = _getIconForEvent(event);
+                markers[event.id] = _createSportEventMarker(event, icon);
+              }
+            }
+          }
+        if (!isSportFilterActive) {
+            for (var loc in predefinedLocationsCascavel) {
+              if (activeLocationEventCount.containsKey(loc.name)) {
+                final count = activeLocationEventCount[loc.name]!;
+                markers[loc.name] = _createActiveLocationMarker(loc, count);
+              } else {
+                markers[loc.name] = _createEmptyLocationMarker(loc);
+              }
+            }
+          }
+        } else if (!isSportFilterActive) {
+            for (var loc in predefinedLocationsCascavel) {
+               markers[loc.name] = _createEmptyLocationMarker(loc);
+            }
+        }
         return GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _currentPosition != null 
@@ -411,6 +408,7 @@ class _HomeContentState extends State<HomeContent> {
           markers: markers.values.toSet(), 
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
         );
       },
     );
@@ -455,15 +453,7 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Marker _createActiveLocationMarker(PredefinedLocation loc, List<Event> allEvents) {
-    final eventCount = allEvents.where((e) => 
-        e.location.name == loc.name || 
-        (
-          e.location.coordinates.latitude.toStringAsFixed(5) == loc.coordinates.latitude.toStringAsFixed(5) &&
-          e.location.coordinates.longitude.toStringAsFixed(5) == loc.coordinates.longitude.toStringAsFixed(5)
-        )
-    ).length;
-
+  Marker _createActiveLocationMarker(PredefinedLocation loc, int eventCount) {
     return Marker(
       markerId: MarkerId('loc_${loc.name}'), 
       position: LatLng(loc.coordinates.latitude, loc.coordinates.longitude),

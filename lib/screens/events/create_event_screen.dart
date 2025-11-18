@@ -58,6 +58,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       'Corrida',
       'Futebol',
       'Futevôlei',
+      'Futsal',
       'Handebol',
       'Natação',
       'Padel',

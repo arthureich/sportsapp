@@ -6,7 +6,7 @@ class UserModel {
   final String email;
   final String fotoUrl;
   final String bio;
-  final double scoreEsportividade;
+  final double? scoreEsportividade;
   final List<String> esportesInteresse;
   final List<String> fcmTokens;
   final String genero;
@@ -32,7 +32,7 @@ class UserModel {
       email: data['email'] ?? '',
       fotoUrl: data['fotoUrl'] ?? '',
       bio: data['bio'] ?? '',
-      scoreEsportividade: (data['scoreEsportividade'] ?? 5.0).toDouble(),
+      scoreEsportividade: (data['scoreEsportividade'] as num?)?.toDouble(),
       esportesInteresse: List<String>.from(data['esportesInteresse'] ?? []),
       fcmTokens: List<String>.from(data['fcmTokens'] ?? []),
       genero: data['genero'] ?? 'boy',
