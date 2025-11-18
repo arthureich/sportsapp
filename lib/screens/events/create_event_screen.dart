@@ -77,7 +77,6 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     _places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
     _generateSessionToken();
     _filteredPredefinedLocations = [];
-    _locationController.addListener(_onSearchChanged);
   if (_isEditMode) {
       final event = widget.eventToEdit!;
       _titleController.text = event.title;
@@ -102,6 +101,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       _selectedGeoPoint = loc.coordinates;
       _selectedPredefinedLocation = loc; 
     }
+  _locationController.addListener(_onSearchChanged);
   }
   void _generateSessionToken() {
     _sessionToken = DateTime.now().microsecondsSinceEpoch.toString();

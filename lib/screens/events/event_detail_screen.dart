@@ -191,7 +191,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               background: Image.network(
                 widget.event.imageUrl, 
                 fit: BoxFit.cover,
-                color: Colors.black.withValues(),
                 colorBlendMode: BlendMode.darken,
                 errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
                   return Container(
